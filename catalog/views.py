@@ -1,8 +1,9 @@
+from django.db.models.deletion import ProtectedError
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
-from .models import Author
-from .serializers import AuthorSerializer
+from .models import Author, Book
+from .serializers import AuthorSerializer, BookSerializer
 
 
 class AuthorViewSet(viewsets.ModelViewSet):
@@ -22,3 +23,23 @@ class AuthorViewSet(viewsets.ModelViewSet):
             )
 
         return super().destroy(request, *args, **kwargs)
+
+
+class BookViewSet(viewsets.ModelViewSet):
+    queryset = Book.objects.prefetch_related("authors").all()
+    serializer_class = BookSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {
+                    "code": "book_has_related_records",
+                    "message": (
+                        "Нельзя удалить книгу, пока существуют "
+                        "связанные записи, защищающие её от удаления."
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )

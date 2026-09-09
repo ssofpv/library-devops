@@ -6,6 +6,7 @@
 [Описание проекта «Библиотека»](docs/project-description.md)
 [Правила внесения изменений](CONTRIBUTING.md)
 [Описание HTTP API](docs/api.md)
+[API книг](docs/api-books.md)
 
 ## Текущее состояние
 
