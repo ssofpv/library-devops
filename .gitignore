@@ -1,0 +1,24 @@
+# Виртуальное окружение
+.venv/
+
+# Временные файлы Python
+__pycache__/
+*.py[cod]
+
+# Локальные настройки и секреты
+.env
+.env.*
+!.env.example
+
+# Локальная база SQLite
+*.sqlite3
+*.sqlite3-journal
+
+# Результаты проверок
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Логи
+*.log
