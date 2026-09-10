@@ -17,6 +17,7 @@
 - [API экземпляров](docs/api-copies.md)
 - [Ручная проверка приложения](docs/manual-check.md)
 - [Учебный конфликт слияния](docs/merge-conflict.md)
+- [Проверка установки из чистой копии](docs/clean-install-check.md)
 
 ## Возможности
 
