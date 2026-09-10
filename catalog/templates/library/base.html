@@ -1,0 +1,26 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Библиотека{% endblock %} · Библиотека</title>
+  <link rel="stylesheet" href="{% static 'library/site.css' %}">
+</head>
+<body>
+  <a class="skip" href="#content">К содержимому</a>
+  <header class="site-header">
+    <a class="brand" href="{% url 'library:home' %}">Библиотека<span>Электронный каталог</span></a>
+    <nav aria-label="Основная навигация">
+      <a href="{% url 'library:home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Главная</a>
+      <a href="{% url 'library:books' %}" {% if 'book' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Книги</a>
+      <a href="{% url 'library:authors' %}" {% if 'author' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Авторы</a>
+    </nav>
+  </header>
+  <main id="content">
+    {% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer>Библиотека <span>Каталог авторов и изданий</span></footer>
+</body>
+</html>

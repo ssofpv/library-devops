@@ -1,0 +1,9 @@
+{% extends 'library/base.html' %}
+{% block title %}Удаление{% endblock %}
+{% block content %}
+<a class="back" href="{% url back %}">← Назад к списку</a>
+<div class="form-panel"><p class="eyebrow">КАТАЛОГ</p><h1>Удаление записи</h1><p class="record-title">{{ object }}</p>
+{% if error %}<div class="error-summary" role="alert">{{ error }}</div><a class="button" href="{% url back %}">Вернуться к списку</a>
+{% else %}<p>Удалить эту запись? Восстановить её через приложение будет нельзя.</p><form method="post">{% csrf_token %}<div class="form-actions"><button class="button danger" type="submit">Удалить</button><a href="{% url back %}">Отмена</a></div></form>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'library/base.html' %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">ВАШ КНИЖНЫЙ КАТАЛОГ</p>
+  <h1>Каждая книга<br>на своём месте.</h1>
+  <p class="lead">Собирайте издания, добавляйте авторов и поддерживайте порядок в каталоге библиотеки.</p>
+  <a class="button" href="{% url 'library:books' %}">Открыть каталог →</a>
+</section>
+<section class="cards" aria-label="Разделы каталога">
+  <a class="card" href="{% url 'library:books' %}"><span class="count">{{ book_count }}</span><h2>Книги</h2><p>Названия, годы издания и авторы.</p><span class="card-link">Перейти к книгам →</span></a>
+  <a class="card" href="{% url 'library:authors' %}"><span class="count">{{ author_count }}</span><h2>Авторы</h2><p>Писатели, чьи произведения входят в каталог.</p><span class="card-link">Перейти к авторам →</span></a>
+</section>
+{% endblock %}
