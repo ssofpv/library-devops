@@ -8,6 +8,7 @@
 [Описание HTTP API](docs/api.md)
 [API книг](docs/api-books.md)
 [API экземпляров](docs/api-copies.md)
+[Ручная проверка приложения](docs/manual-check.md)
 
 
 ## Текущее состояние
