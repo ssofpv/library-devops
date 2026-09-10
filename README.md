@@ -7,6 +7,8 @@
 [Правила внесения изменений](CONTRIBUTING.md)
 [Описание HTTP API](docs/api.md)
 [API книг](docs/api-books.md)
+[API экземпляров](docs/api-copies.md)
+
 
 ## Текущее состояние
 
