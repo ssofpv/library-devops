@@ -1,0 +1,10 @@
+{% extends 'library/base.html' %}
+{% block title %}Авторы{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">КАТАЛОГ</p><h1>Авторы</h1><p>Имена, стоящие за книгами.</p></div><a class="button" href="{% url 'library:author-create' %}">+ Добавить автора</a></div>
+{% if authors %}
+<div class="table-wrap"><table><thead><tr><th scope="col">Имя автора</th><th scope="col">Действия</th></tr></thead><tbody>
+{% for author in authors %}<tr><td class="name">{{ author.full_name }}</td><td class="actions"><a href="{% url 'library:author-edit' author.pk %}">Изменить<span class="sr-only">: {{ author }}</span></a><a class="danger-link" href="{% url 'library:author-delete' author.pk %}">Удалить<span class="sr-only">: {{ author }}</span></a></td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}<div class="empty"><h2>Добавьте первого автора</h2><p>После этого его можно будет выбрать при добавлении книги.</p></div>{% endif %}
+{% endblock %}
