@@ -1,0 +1,8 @@
+{% extends 'library/base.html' %}
+{% block title %}Филиалы{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">БИБЛИОТЕЧНЫЙ ФОНД</p><h1>Филиалы</h1><p>Библиотеки и их адреса.</p></div><a class="button" href="{% url 'inventory-web:branch-create' %}">+ Добавить филиал</a></div>
+{% if branches %}<div class="table-wrap"><table><thead><tr><th scope="col">Название</th><th scope="col">Адрес</th><th scope="col">Действия</th></tr></thead><tbody>
+{% for branch in branches %}<tr><td class="name">{{ branch.name }}</td><td>{{ branch.address }}</td><td class="actions"><a href="{% url 'inventory-web:copies' %}?branch={{ branch.pk }}">Экземпляры<span class="sr-only">: {{ branch }}</span></a><a href="{% url 'inventory-web:branch-edit' branch.pk %}">Изменить<span class="sr-only">: {{ branch }}</span></a><a class="danger-link" href="{% url 'inventory-web:branch-delete' branch.pk %}">Удалить<span class="sr-only">: {{ branch }}</span></a></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty"><h2>Добавьте первый филиал</h2><p>Укажите название и адрес библиотеки.</p></div>{% endif %}
+{% endblock %}
