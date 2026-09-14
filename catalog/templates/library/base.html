@@ -15,14 +15,12 @@
       <a href="{% url 'library:home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Главная</a>
       <a href="{% url 'library:books' %}" {% if 'book' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Книги</a>
       <a href="{% url 'library:authors' %}" {% if 'author' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Авторы</a>
-      <a href="{% url 'inventory-web:branches' %}" {% if 'branch' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Филиалы</a>
-      <a href="{% url 'inventory-web:copies' %}" {% if 'cop' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Экземпляры</a>
     </nav>
   </header>
   <main id="content">
     {% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
-  <footer>Библиотека <span>Каталог и библиотечный фонд</span></footer>
+  <footer>Библиотека <span>Каталог авторов и изданий</span></footer>
 </body>
 </html>
