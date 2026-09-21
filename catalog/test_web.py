@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -8,6 +9,8 @@ from .models import Author, Book
 
 class CatalogWebTests(TestCase):
     def setUp(self):
+        self.user = get_user_model().objects.create_user(username="librarian")
+        self.client.force_login(self.user)
         self.author = Author.objects.create(full_name="Артур Конан Дойл")
         self.book = Book.objects.create(title="Собака Баскервилей", publication_year=1902)
         self.book.authors.add(self.author)
@@ -129,6 +132,7 @@ class CatalogWebTests(TestCase):
 
     def test_csrf_required_and_valid_form_accepted(self):
         client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
         url = reverse("library:author-create")
         self.assertEqual(client.post(url, {"full_name": "Жюль Верн"}).status_code, 403)
         client.get(url)

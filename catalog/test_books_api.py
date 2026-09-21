@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -5,6 +6,10 @@ from .models import Author, Book
 
 
 class BookAPITests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="librarian")
+        self.client.force_login(self.user)
+
     def test_create_book_with_authors(self):
         first_author = Author.objects.create(full_name="Илья Ильф")
         second_author = Author.objects.create(full_name="Евгений Петров")

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import override
@@ -8,6 +9,7 @@ from .models import Author, Book
 from .web_forms import AuthorForm, BookForm
 
 
+@login_required
 @require_safe
 def home(request):
     return render(
@@ -20,11 +22,13 @@ def home(request):
     )
 
 
+@login_required
 @require_safe
 def authors(request):
     return render(request, "library/authors.html", {"authors": Author.objects.all()})
 
 
+@login_required
 @require_safe
 def books(request):
     return render(
@@ -36,6 +40,7 @@ def books(request):
     )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def author_edit(request, pk=None):
     author = get_object_or_404(Author, pk=pk) if pk is not None else None
@@ -48,6 +53,7 @@ def author_edit(request, pk=None):
     )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def book_edit(request, pk=None):
     book = get_object_or_404(Book, pk=pk) if pk is not None else None
@@ -67,6 +73,7 @@ def edit(request, form_class, instance, title, back):
         return render(request, "library/form.html", {"form": form, "title": title, "back": back})
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def author_delete(request, pk):
     author = get_object_or_404(Author, pk=pk)
@@ -78,6 +85,7 @@ def author_delete(request, pk):
     return delete_page(request, author, "library:authors", error)
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def book_delete(request, pk):
     book = get_object_or_404(Book, pk=pk)
