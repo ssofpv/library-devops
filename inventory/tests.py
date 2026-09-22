@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -5,6 +6,10 @@ from .models import Branch
 
 
 class BranchAPITests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="librarian")
+        self.client.force_login(self.user)
+
     def test_create_branch(self):
         response = self.client.post(
             reverse("branch-list"),

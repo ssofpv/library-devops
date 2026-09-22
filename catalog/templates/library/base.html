@@ -11,6 +11,7 @@
   <a class="skip" href="#content">К содержимому</a>
   <header class="site-header">
     <a class="brand" href="{% url 'library:home' %}">Библиотека<span>Электронный каталог</span></a>
+    {% if user.is_authenticated %}
     <nav aria-label="Основная навигация">
       <a href="{% url 'library:home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Главная</a>
       <a href="{% url 'library:books' %}" {% if 'book' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Книги</a>
@@ -18,6 +19,13 @@
       <a href="{% url 'inventory-web:branches' %}" {% if 'branch' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Филиалы</a>
       <a href="{% url 'inventory-web:copies' %}" {% if 'cop' in request.resolver_match.url_name %}aria-current="page"{% endif %}>Экземпляры</a>
     </nav>
+    <div class="account">
+      <span>{{ user.username }}</span>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}<button class="button" type="submit">Выйти</button>
+      </form>
+    </div>
+    {% endif %}
   </header>
   <main id="content">
     {% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import override
@@ -8,11 +9,13 @@ from .models import Branch, Copy
 from .web_forms import BranchForm, CopyFilterForm, CopyForm
 
 
+@login_required
 @require_safe
 def branches(request):
     return render(request, "inventory_web/branches.html", {"branches": Branch.objects.all()})
 
 
+@login_required
 @require_safe
 def copies(request):
     with override("ru"):
@@ -37,6 +40,7 @@ def copies(request):
         )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def branch_edit(request, pk=None):
     obj = get_object_or_404(Branch, pk=pk) if pk is not None else None
@@ -49,6 +53,7 @@ def branch_edit(request, pk=None):
     )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def copy_edit(request, pk=None):
     obj = get_object_or_404(Copy, pk=pk) if pk is not None else None
@@ -79,6 +84,7 @@ def edit(request, form_class, instance, title, back):
         )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def branch_delete(request, pk):
     obj = get_object_or_404(Branch, pk=pk)
@@ -105,6 +111,7 @@ def branch_delete(request, pk):
     )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def copy_delete(request, pk):
     obj = get_object_or_404(Copy, pk=pk)

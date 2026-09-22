@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -8,6 +9,8 @@ from .models import Branch, Copy
 
 class InventoryWebTests(TestCase):
     def setUp(self):
+        self.user = get_user_model().objects.create_user(username="librarian")
+        self.client.force_login(self.user)
         self.book = Book.objects.create(title="Затерянный мир")
         self.branch = Branch.objects.create(name="Центральная", address="Лесная, 10")
         self.copy = Copy.objects.create(
@@ -152,6 +155,7 @@ class InventoryWebTests(TestCase):
 
     def test_csrf_protects_mutations(self):
         client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
         self.assertEqual(client.post(self.url("copy-delete", self.copy)).status_code, 403)
         self.assertTrue(Copy.objects.filter(pk=self.copy.pk).exists())
         client.get(self.url("copy-create"))

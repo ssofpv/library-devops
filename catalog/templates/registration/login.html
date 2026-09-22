@@ -1,0 +1,17 @@
+{% extends "library/base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<section class="form-panel">
+  <h1>Вход в библиотеку</h1>
+  <p>Введите логин и пароль сотрудника. Учётную запись выдаёт администратор.</p>
+  <form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div class="field">{{ field.label_tag }} {{ field }} {{ field.errors }}</div>
+    {% endfor %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="button" type="submit">Войти</button>
+  </form>
+</section>
+{% endblock %}

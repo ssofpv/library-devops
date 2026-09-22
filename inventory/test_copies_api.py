@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.urls import reverse
@@ -10,6 +11,8 @@ from .models import Branch, Copy
 
 class CopyAPITests(APITestCase):
     def setUp(self):
+        self.user = get_user_model().objects.create_user(username="librarian")
+        self.client.force_login(self.user)
         self.author = Author.objects.create(full_name="Михаил Булгаков")
         self.book = Book.objects.create(title="Мастер и Маргарита")
         self.book.authors.add(self.author)
