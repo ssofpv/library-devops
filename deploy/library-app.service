@@ -1,0 +1,22 @@
+[Unit]
+Description=Library Django application (Gunicorn)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=library-app
+Group=library-app
+WorkingDirectory=/opt/library-app
+EnvironmentFile=/opt/library-app/.env
+ExecStart=/opt/library-app/.venv/bin/gunicorn --workers 2 --bind 192.168.56.10:8000 config.wsgi:application
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
