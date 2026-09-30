@@ -1,0 +1,16 @@
+[run]
+source =
+    catalog
+    inventory
+    config
+omit =
+    */migrations/*
+    */tests.py
+    */test_*.py
+    */asgi.py
+    */wsgi.py
+
+[report]
+show_missing = True
+skip_covered = False
+fail_under = 40
