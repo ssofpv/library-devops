@@ -10,6 +10,7 @@ endif
 
 setup:
 >$(PYTHON) -m pip install -r requirements-dev.txt
+>$(PYTHON) manage.py migrate
 
 run:
 >$(PYTHON) manage.py runserver
