@@ -29,7 +29,7 @@ restore:
 
 test:
 >$(PYTHON) -m coverage erase
->$(PYTHON) -m coverage run manage.py test
+>$(PYTHON) -m coverage run manage.py test --settings=config.settings_test
 >$(PYTHON) -m coverage report
 >$(PYTHON) -m coverage xml
 
