@@ -18,7 +18,10 @@ migrate:
 >$(PYTHON) manage.py migrate
 
 test:
->$(PYTHON) manage.py test
+>$(PYTHON) -m coverage erase
+>$(PYTHON) -m coverage run manage.py test
+>$(PYTHON) -m coverage report
+>$(PYTHON) -m coverage xml
 
 quality:
 >$(PYTHON) -m ruff check .
