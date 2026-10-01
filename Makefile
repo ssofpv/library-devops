@@ -6,7 +6,7 @@ else
 PYTHON ?= .venv/bin/python
 endif
 
-.PHONY: setup run migrate backup restore test quality format verify
+.PHONY: setup run migrate backup restore test quality sast format verify
 
 setup:
 >$(PYTHON) -m pip install -r requirements-dev.txt
@@ -37,6 +37,9 @@ quality:
 >$(PYTHON) -m ruff check .
 >$(PYTHON) -m ruff format --check .
 
+sast:
+>$(PYTHON) -m bandit -r catalog inventory config -x "catalog/tests.py,catalog/test_books_api.py,catalog/test_web.py,inventory/tests.py,inventory/test_copies_api.py,inventory/test_web.py,config/tests.py,config/test_auth.py,catalog/migrations,inventory/migrations"
+
 format:
 >$(PYTHON) -m ruff check . --select I --fix
 >$(PYTHON) -m ruff format .
@@ -45,4 +48,5 @@ verify:
 >$(MAKE) quality
 >$(PYTHON) manage.py check
 >$(PYTHON) manage.py makemigrations --check --dry-run
+>$(MAKE) sast
 >$(MAKE) test
