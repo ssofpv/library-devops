@@ -50,6 +50,52 @@ class CopyAPITests(APITestCase):
         self.assertEqual(self.copy.book_id, self.book.id)
         self.assertEqual(self.copy.branch_id, self.branch.id)
 
+    def test_copy_can_be_created_with_selected_status(self):
+        response = self.client.post(
+            self.list_url,
+            self.payload(status="issued"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+
+        copy = Copy.objects.get(pk=response.data["id"])
+        self.assertEqual(copy.status, "issued")
+
+        response = self.client.get(reverse("copy-detail", args=[copy.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "issued")
+
+    def test_copy_status_can_be_changed(self):
+        for value in ["issued", "withdrawn", "available"]:
+            with self.subTest(status=value):
+                response = self.client.patch(
+                    self.detail_url,
+                    {"status": value},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["status"], value)
+                self.copy.refresh_from_db()
+                self.assertEqual(self.copy.status, value)
+
+    def test_invalid_status_preserves_existing_data(self):
+        self.copy.status = "issued"
+        self.copy.save(update_fields=["status"])
+
+        for value in ["unknown", "", None, [], {}]:
+            with self.subTest(status=value):
+                response = self.client.patch(
+                    self.detail_url,
+                    {"status": value},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("status", response.data)
+                self.copy.refresh_from_db()
+                self.assertEqual(self.copy.status, "issued")
+                self.assertEqual(self.copy.book_id, self.book.pk)
+                self.assertEqual(self.copy.branch_id, self.branch.pk)
+
     def test_create_copy(self):
         response = self.client.post(
             self.list_url,
@@ -59,6 +105,8 @@ class CopyAPITests(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         copy = Copy.objects.get(pk=response.data["id"])
+        self.assertEqual(copy.status, "available")
+        self.assertEqual(response.data["status"], "available")
         self.assertEqual(copy.inventory_number, "INV-002")
         self.assertEqual(copy.shelf_location, "")
         self.assertEqual(copy.book_id, self.book.id)
@@ -196,6 +244,7 @@ class CopyAPITests(APITestCase):
                     "id": self.copy.id,
                     "inventory_number": "INV-001",
                     "shelf_location": "",
+                    "status": "available",
                     "book_id": self.book.id,
                     "branch_id": self.branch.id,
                 },

@@ -21,6 +21,11 @@ class Branch(models.Model):
 
 
 class Copy(models.Model):
+    class Status(models.TextChoices):
+        AVAILABLE = "available", "Доступен"
+        ISSUED = "issued", "Выдан"
+        WITHDRAWN = "withdrawn", "Списан"
+
     inventory_number = models.CharField(
         max_length=100,
         unique=True,
@@ -31,6 +36,12 @@ class Copy(models.Model):
         blank=True,
         default="",
         verbose_name="Место хранения",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.AVAILABLE,
+        verbose_name="Статус",
     )
     book = models.ForeignKey(
         "catalog.Book",

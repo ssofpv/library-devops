@@ -212,3 +212,69 @@ class CopyShelfLocationMigrationTests(TransactionTestCase):
         saved_copy.save(update_fields=["shelf_location"])
         saved_copy.refresh_from_db()
         self.assertEqual(saved_copy.shelf_location, "Стеллаж после миграции")
+
+
+class CopyStatusMigrationTests(TransactionTestCase):
+    def test_existing_copy_gets_status_and_preserves_data(self):
+        old_target = [
+            ("catalog", "0002_book_description"),
+            ("inventory", "0003_copy_shelf_location"),
+        ]
+        new_target = [
+            ("catalog", "0002_book_description"),
+            ("inventory", "0004_copy_status"),
+        ]
+
+        executor = MigrationExecutor(connection)
+        latest_targets = executor.loader.graph.leaf_nodes()
+
+        def restore_schema():
+            MigrationExecutor(connection).migrate(latest_targets)
+
+        self.addCleanup(restore_schema)
+        executor.migrate(old_target)
+
+        old_apps = executor.loader.project_state(old_target).apps
+        OldBook = old_apps.get_model("catalog", "Book")
+        OldBranch = old_apps.get_model("inventory", "Branch")
+        OldCopy = old_apps.get_model("inventory", "Copy")
+
+        book = OldBook.objects.create(
+            title="Книга до добавления статуса",
+            description="Сохранённое описание",
+        )
+        branch = OldBranch.objects.create(
+            name="Учебный филиал",
+            address="Учебный адрес",
+        )
+        copy = OldCopy.objects.create(
+            inventory_number="STATUS-001",
+            shelf_location="Стеллаж 7",
+            book=book,
+            branch=branch,
+        )
+        copy_id = copy.pk
+        book_id = book.pk
+        branch_id = branch.pk
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(new_target)
+        new_apps = executor.loader.project_state(new_target).apps
+        NewCopy = new_apps.get_model("inventory", "Copy")
+
+        saved_copy = NewCopy.objects.get(pk=copy_id)
+        self.assertEqual(NewCopy.objects.count(), 1)
+        self.assertEqual(saved_copy.inventory_number, "STATUS-001")
+        self.assertEqual(saved_copy.shelf_location, "Стеллаж 7")
+        self.assertEqual(saved_copy.status, "available")
+        self.assertEqual(saved_copy.book_id, book_id)
+        self.assertEqual(saved_copy.branch_id, branch_id)
+        self.assertEqual(saved_copy.book.title, "Книга до добавления статуса")
+        self.assertEqual(saved_copy.book.description, "Сохранённое описание")
+        self.assertEqual(saved_copy.branch.name, "Учебный филиал")
+        self.assertEqual(saved_copy.branch.address, "Учебный адрес")
+
+        saved_copy.status = "issued"
+        saved_copy.save(update_fields=["status"])
+        saved_copy.refresh_from_db()
+        self.assertEqual(saved_copy.status, "issued")

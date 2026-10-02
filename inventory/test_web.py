@@ -25,6 +25,7 @@ class InventoryWebTests(TestCase):
             "inventory_number": "LIB-002",
             "book": self.book.pk,
             "branch": self.branch.pk,
+            "status": "available",
             **changes,
         }
 
@@ -100,6 +101,82 @@ class InventoryWebTests(TestCase):
         self.assertContains(response, "&lt;script&gt;")
         self.assertContains(response, "&lt;/script&gt;")
         self.assertNotContains(response, self.copy.shelf_location)
+
+    def test_copy_forms_include_status_with_default_value(self):
+        for url in [
+            self.url("copy-create"),
+            self.url("copy-edit", self.copy),
+        ]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'name="status"')
+                self.assertEqual(
+                    response.context["form"]["status"].value(),
+                    "available",
+                )
+
+    def test_copy_status_create_edit_and_display(self):
+        response = self.client.post(
+            self.url("copy-create"),
+            self.data(status="issued"),
+        )
+        self.assertRedirects(response, self.url("copies"))
+        copy = Copy.objects.get(inventory_number="LIB-002")
+        self.assertEqual(copy.status, "issued")
+        self.assertContains(
+            self.client.get(self.url("copies")),
+            "<td>Выдан</td>",
+            html=True,
+        )
+
+        for value, label in [
+            ("withdrawn", "Списан"),
+            ("available", "Доступен"),
+        ]:
+            with self.subTest(status=value):
+                response = self.client.post(
+                    self.url("copy-edit", copy),
+                    self.data(
+                        inventory_number=copy.inventory_number,
+                        status=value,
+                    ),
+                )
+                self.assertRedirects(response, self.url("copies"))
+                copy.refresh_from_db()
+                self.assertEqual(copy.status, value)
+
+                response = self.client.get(self.url("copies"))
+                self.assertContains(response, f"<td>{label}</td>", html=True)
+
+                response = self.client.get(self.url("copy-edit", copy))
+                self.assertEqual(
+                    response.context["form"]["status"].value(),
+                    value,
+                )
+
+    def test_invalid_copy_status_preserves_data(self):
+        self.copy.status = "issued"
+        self.copy.shelf_location = "Стеллаж 5"
+        self.copy.save(update_fields=["status", "shelf_location"])
+
+        for value in ["unknown", ""]:
+            with self.subTest(status=value):
+                response = self.client.post(
+                    self.url("copy-edit", self.copy),
+                    self.data(
+                        inventory_number=self.copy.inventory_number,
+                        shelf_location="Другое место",
+                        status=value,
+                    ),
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("status", response.context["form"].errors)
+                self.copy.refresh_from_db()
+                self.assertEqual(self.copy.status, "issued")
+                self.assertEqual(self.copy.shelf_location, "Стеллаж 5")
+                self.assertEqual(self.copy.book_id, self.book.pk)
+                self.assertEqual(self.copy.branch_id, self.branch.pk)
 
     def test_pages_and_navigation(self):
         self.assertContains(self.client.get(self.url("branches")), self.branch.address)

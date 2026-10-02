@@ -14,7 +14,7 @@ class BranchForm(forms.ModelForm):
 class CopyForm(forms.ModelForm):
     class Meta:
         model = Copy
-        fields = ["inventory_number", "shelf_location", "book", "branch"]
+        fields = ["inventory_number", "shelf_location", "status", "book", "branch"]
         error_messages = {
             "inventory_number": {"unique": "Экземпляр с таким инвентарным номером уже существует."},
         }
