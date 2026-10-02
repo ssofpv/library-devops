@@ -36,6 +36,7 @@ class CopyAPITests(APITestCase):
     def payload(self, **changes):
         data = {
             "inventory_number": "INV-002",
+            "shelf_location": "",
             "book_id": self.book.id,
             "branch_id": self.branch.id,
         }
@@ -45,6 +46,7 @@ class CopyAPITests(APITestCase):
     def assert_original_copy(self):
         self.copy.refresh_from_db()
         self.assertEqual(self.copy.inventory_number, "INV-001")
+        self.assertEqual(self.copy.shelf_location, "")
         self.assertEqual(self.copy.book_id, self.book.id)
         self.assertEqual(self.copy.branch_id, self.branch.id)
 
@@ -58,10 +60,86 @@ class CopyAPITests(APITestCase):
         self.assertEqual(response.status_code, 201)
         copy = Copy.objects.get(pk=response.data["id"])
         self.assertEqual(copy.inventory_number, "INV-002")
+        self.assertEqual(copy.shelf_location, "")
         self.assertEqual(copy.book_id, self.book.id)
         self.assertEqual(copy.branch_id, self.branch.id)
         self.assertEqual(response.data["book_id"], self.book.id)
+        self.assertEqual(response.data["shelf_location"], "")
         self.assertEqual(response.data["branch_id"], self.branch.id)
+
+    def test_shelf_location_is_saved_and_returned(self):
+        response = self.client.post(
+            self.list_url,
+            self.payload(shelf_location="Стеллаж 2, полка 3"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        copy = Copy.objects.get(pk=response.data["id"])
+        self.assertEqual(copy.shelf_location, "Стеллаж 2, полка 3")
+        self.assertEqual(
+            response.data["shelf_location"],
+            "Стеллаж 2, полка 3",
+        )
+
+        response = self.client.get(
+            reverse("copy-detail", args=[copy.pk]),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["shelf_location"],
+            "Стеллаж 2, полка 3",
+        )
+
+    def test_shelf_location_can_be_updated_and_cleared(self):
+        response = self.client.patch(
+            self.detail_url,
+            {"shelf_location": "Стеллаж 5"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.copy.refresh_from_db()
+        self.assertEqual(self.copy.shelf_location, "Стеллаж 5")
+
+        response = self.client.patch(
+            self.detail_url,
+            {"shelf_location": ""},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.copy.refresh_from_db()
+        self.assertEqual(self.copy.shelf_location, "")
+
+    def test_shelf_location_boundaries_and_invalid_values(self):
+        response = self.client.patch(
+            self.detail_url,
+            {"shelf_location": "А" * 100},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.copy.refresh_from_db()
+        self.assertEqual(self.copy.shelf_location, "А" * 100)
+
+        for value in ["А" * 101, None, [], {}]:
+            with self.subTest(shelf_location=value):
+                response = self.client.patch(
+                    self.detail_url,
+                    {"shelf_location": value},
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("shelf_location", response.data)
+                self.copy.refresh_from_db()
+                self.assertEqual(
+                    self.copy.shelf_location,
+                    "А" * 100,
+                )
 
     def test_invalid_create_preserves_database(self):
         cases = [
@@ -117,6 +195,7 @@ class CopyAPITests(APITestCase):
                 {
                     "id": self.copy.id,
                     "inventory_number": "INV-001",
+                    "shelf_location": "",
                     "book_id": self.book.id,
                     "branch_id": self.branch.id,
                 },

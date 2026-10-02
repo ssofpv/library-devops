@@ -1,4 +1,7 @@
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import TransactionTestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -145,3 +148,67 @@ class BranchAPITests(APITestCase):
         response = self.client.get(reverse("branch-detail", args=[99999]))
 
         self.assertEqual(response.status_code, 404)
+
+
+class CopyShelfLocationMigrationTests(TransactionTestCase):
+    def test_existing_copy_and_relations_survive_migration(self):
+        old_target = [
+            ("catalog", "0002_book_description"),
+            ("inventory", "0002_copy"),
+        ]
+        new_target = [
+            ("catalog", "0002_book_description"),
+            ("inventory", "0003_copy_shelf_location"),
+        ]
+
+        executor = MigrationExecutor(connection)
+        latest_targets = executor.loader.graph.leaf_nodes()
+
+        def restore_schema():
+            MigrationExecutor(connection).migrate(latest_targets)
+
+        self.addCleanup(restore_schema)
+        executor.migrate(old_target)
+
+        old_apps = executor.loader.project_state(old_target).apps
+        OldBook = old_apps.get_model("catalog", "Book")
+        OldBranch = old_apps.get_model("inventory", "Branch")
+        OldCopy = old_apps.get_model("inventory", "Copy")
+
+        book = OldBook.objects.create(
+            title="Книга до миграции",
+            description="Описание книги",
+        )
+        branch = OldBranch.objects.create(
+            name="Филиал до миграции",
+            address="Учебный адрес",
+        )
+        copy = OldCopy.objects.create(
+            inventory_number="MIG-001",
+            book=book,
+            branch=branch,
+        )
+        copy_id = copy.pk
+        book_id = book.pk
+        branch_id = branch.pk
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(new_target)
+        new_apps = executor.loader.project_state(new_target).apps
+        NewCopy = new_apps.get_model("inventory", "Copy")
+
+        saved_copy = NewCopy.objects.get(pk=copy_id)
+        self.assertEqual(NewCopy.objects.count(), 1)
+        self.assertEqual(saved_copy.inventory_number, "MIG-001")
+        self.assertEqual(saved_copy.shelf_location, "")
+        self.assertEqual(saved_copy.book_id, book_id)
+        self.assertEqual(saved_copy.branch_id, branch_id)
+        self.assertEqual(saved_copy.book.title, "Книга до миграции")
+        self.assertEqual(saved_copy.book.description, "Описание книги")
+        self.assertEqual(saved_copy.branch.name, "Филиал до миграции")
+        self.assertEqual(saved_copy.branch.address, "Учебный адрес")
+
+        saved_copy.shelf_location = "Стеллаж после миграции"
+        saved_copy.save(update_fields=["shelf_location"])
+        saved_copy.refresh_from_db()
+        self.assertEqual(saved_copy.shelf_location, "Стеллаж после миграции")

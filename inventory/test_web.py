@@ -28,6 +28,79 @@ class InventoryWebTests(TestCase):
             **changes,
         }
 
+    def test_copy_forms_include_shelf_location(self):
+        for url in [
+            self.url("copy-create"),
+            self.url("copy-edit", self.copy),
+        ]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'name="shelf_location"')
+
+    def test_shelf_location_create_edit_and_clear(self):
+        response = self.client.post(
+            self.url("copy-create"),
+            self.data(shelf_location="Стеллаж 2, полка 3"),
+        )
+        self.assertRedirects(response, self.url("copies"))
+        copy = Copy.objects.get(inventory_number="LIB-002")
+        self.assertEqual(copy.shelf_location, "Стеллаж 2, полка 3")
+        self.assertContains(self.client.get(self.url("copies")), "Стеллаж 2, полка 3")
+
+        for value in ["Стеллаж 4", ""]:
+            with self.subTest(shelf_location=value):
+                response = self.client.post(
+                    self.url("copy-edit", copy),
+                    self.data(
+                        inventory_number=copy.inventory_number,
+                        shelf_location=value,
+                    ),
+                )
+                self.assertRedirects(response, self.url("copies"))
+                copy.refresh_from_db()
+                self.assertEqual(copy.shelf_location, value)
+
+        response = self.client.get(self.url("copies"))
+        self.assertNotContains(response, "Стеллаж 2, полка 3")
+        self.assertNotContains(response, "Стеллаж 4")
+
+    def test_shelf_location_length_boundary_preserves_data(self):
+        url = self.url("copy-edit", self.copy)
+        response = self.client.post(
+            url,
+            self.data(
+                inventory_number=self.copy.inventory_number,
+                shelf_location="А" * 100,
+            ),
+        )
+        self.assertRedirects(response, self.url("copies"))
+        self.copy.refresh_from_db()
+        self.assertEqual(self.copy.shelf_location, "А" * 100)
+
+        response = self.client.post(
+            url,
+            self.data(
+                inventory_number=self.copy.inventory_number,
+                shelf_location="А" * 101,
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("shelf_location", response.context["form"].errors)
+        self.copy.refresh_from_db()
+        self.assertEqual(self.copy.shelf_location, "А" * 100)
+        self.assertEqual(self.copy.book_id, self.book.pk)
+        self.assertEqual(self.copy.branch_id, self.branch.pk)
+
+    def test_shelf_location_is_html_escaped(self):
+        self.copy.shelf_location = "<script>alert('location')</script>"
+        self.copy.save(update_fields=["shelf_location"])
+
+        response = self.client.get(self.url("copies"))
+        self.assertContains(response, "&lt;script&gt;")
+        self.assertContains(response, "&lt;/script&gt;")
+        self.assertNotContains(response, self.copy.shelf_location)
+
     def test_pages_and_navigation(self):
         self.assertContains(self.client.get(self.url("branches")), self.branch.address)
         self.assertContains(self.client.get(self.url("copies")), self.copy.inventory_number)
