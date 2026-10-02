@@ -10,6 +10,45 @@ class BookAPITests(APITestCase):
         self.user = get_user_model().objects.create_user(username="librarian")
         self.client.force_login(self.user)
 
+    def test_description_is_saved_and_returned(self):
+        response = self.client.post(
+            reverse("book-list"),
+            {"title": "Книга с описанием", "description": "Краткая аннотация"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+
+        book = Book.objects.get(pk=response.data["id"])
+        self.assertEqual(book.description, "Краткая аннотация")
+
+        response = self.client.get(reverse("book-detail", args=[book.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["description"], "Краткая аннотация")
+
+    def test_description_can_be_updated_and_cleared(self):
+        book = Book.objects.create(title="Книга", description="Исходное описание")
+        url = reverse("book-detail", args=[book.pk])
+
+        for value in ["Новое описание", ""]:
+            with self.subTest(description=value):
+                response = self.client.patch(url, {"description": value}, format="json")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["description"], value)
+                book.refresh_from_db()
+                self.assertEqual(book.description, value)
+
+    def test_invalid_description_preserves_existing_data(self):
+        book = Book.objects.create(title="Книга", description="Сохранённый текст")
+        url = reverse("book-detail", args=[book.pk])
+
+        for value in [None, [], {}]:
+            with self.subTest(description=value):
+                response = self.client.patch(url, {"description": value}, format="json")
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("description", response.data)
+                book.refresh_from_db()
+                self.assertEqual(book.description, "Сохранённый текст")
+
     def test_create_book_with_authors(self):
         first_author = Author.objects.create(full_name="Илья Ильф")
         second_author = Author.objects.create(full_name="Евгений Петров")
@@ -104,6 +143,7 @@ class BookAPITests(APITestCase):
         author = Author.objects.create(full_name="Михаил Булгаков")
         book = Book.objects.create(
             title="Мастер и Маргарита",
+            description="",
             publication_year=1967,
         )
         book.authors.add(author)
@@ -117,6 +157,7 @@ class BookAPITests(APITestCase):
                 {
                     "id": book.id,
                     "title": "Мастер и Маргарита",
+                    "description": "",
                     "publication_year": 1967,
                     "author_ids": [author.id],
                 }

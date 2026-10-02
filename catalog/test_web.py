@@ -15,6 +15,49 @@ class CatalogWebTests(TestCase):
         self.book = Book.objects.create(title="Собака Баскервилей", publication_year=1902)
         self.book.authors.add(self.author)
 
+    def test_book_forms_include_description(self):
+        for url in [
+            reverse("library:book-create"),
+            reverse("library:book-edit", args=[self.book.pk]),
+        ]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'name="description"')
+
+    def test_book_description_create_edit_and_clear(self):
+        response = self.client.post(
+            reverse("library:book-create"),
+            {"title": "Новая книга", "description": "Первое описание"},
+        )
+        self.assertRedirects(response, reverse("library:books"))
+        book = Book.objects.get(title="Новая книга")
+        self.assertEqual(book.description, "Первое описание")
+        self.assertContains(self.client.get(reverse("library:books")), "Первое описание")
+
+        for value in ["Изменённое описание", ""]:
+            with self.subTest(description=value):
+                response = self.client.post(
+                    reverse("library:book-edit", args=[book.pk]),
+                    {"title": book.title, "description": value},
+                )
+                self.assertRedirects(response, reverse("library:books"))
+                book.refresh_from_db()
+                self.assertEqual(book.description, value)
+
+        response = self.client.get(reverse("library:books"))
+        self.assertNotContains(response, "Первое описание")
+        self.assertNotContains(response, "Изменённое описание")
+
+    def test_book_description_is_html_escaped(self):
+        self.book.description = "<script>alert('description')</script>"
+        self.book.save(update_fields=["description"])
+
+        response = self.client.get(reverse("library:books"))
+        self.assertContains(response, "&lt;script&gt;")
+        self.assertContains(response, "&lt;/script&gt;")
+        self.assertNotContains(response, self.book.description)
+
     def test_pages_show_existing_records(self):
         for route, text in [
             ("home", "Каждая книга"),

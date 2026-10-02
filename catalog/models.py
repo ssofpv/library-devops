@@ -22,6 +22,12 @@ class Book(models.Model):
         max_length=300,
         verbose_name="Название",
     )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Описание",
+    )
     publication_year = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
