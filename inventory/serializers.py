@@ -47,7 +47,7 @@ class CopySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Copy
-        fields = ["id", "inventory_number", "book_id", "branch_id"]
+        fields = ["id", "inventory_number", "shelf_location", "book_id", "branch_id"]
         read_only_fields = ["id"]
 
 

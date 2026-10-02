@@ -26,6 +26,12 @@ class Copy(models.Model):
         unique=True,
         verbose_name="Инвентарный номер",
     )
+    shelf_location = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Место хранения",
+    )
     book = models.ForeignKey(
         "catalog.Book",
         on_delete=models.PROTECT,
