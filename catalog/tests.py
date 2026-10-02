@@ -1,11 +1,15 @@
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TestCase, TransactionTestCase
+from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.urls import reverse
+from rest_framework.response import Response
 from rest_framework.test import APITestCase
 
 from .models import Author, Book
+from .views import AuthorViewSet
 
 
 class CatalogModelTests(TestCase):
@@ -195,3 +199,39 @@ class BookDescriptionMigrationTests(TransactionTestCase):
         saved_book.save(update_fields=["description"])
         saved_book.refresh_from_db()
         self.assertEqual(saved_book.description, "Описание после миграции")
+
+
+class AuthorDeletionUnitTests(SimpleTestCase):
+    def test_author_with_books_is_not_deleted(self):
+        author = Mock()
+        author.books.exists.return_value = True
+        view = AuthorViewSet()
+
+        with (
+            patch.object(view, "get_object", return_value=author),
+            patch("rest_framework.mixins.DestroyModelMixin.destroy") as parent_destroy,
+        ):
+            response = view.destroy(None)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "author_has_books")
+        parent_destroy.assert_not_called()
+
+    def test_author_without_books_can_be_deleted(self):
+        author = Mock()
+        author.books.exists.return_value = False
+        view = AuthorViewSet()
+        expected_response = Response(status=204)
+
+        with (
+            patch.object(view, "get_object", return_value=author),
+            patch(
+                "rest_framework.mixins.DestroyModelMixin.destroy",
+                return_value=expected_response,
+            ) as parent_destroy,
+        ):
+            response = view.destroy(None)
+
+        self.assertIs(response, expected_response)
+        self.assertEqual(response.status_code, 204)
+        parent_destroy.assert_called_once_with(None)
