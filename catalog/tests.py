@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -145,3 +147,51 @@ class AuthorAPITests(APITestCase):
         response = self.client.get(reverse("author-detail", args=[99999]))
 
         self.assertEqual(response.status_code, 404)
+
+
+class BookDescriptionMigrationTests(TransactionTestCase):
+    def test_existing_book_and_authors_survive_migration(self):
+        old_target = [("catalog", "0001_initial")]
+        new_target = [("catalog", "0002_book_description")]
+
+        executor = MigrationExecutor(connection)
+        latest_targets = executor.loader.graph.leaf_nodes()
+
+        def restore_schema():
+            MigrationExecutor(connection).migrate(latest_targets)
+
+        self.addCleanup(restore_schema)
+        executor.migrate(old_target)
+
+        old_apps = executor.loader.project_state(old_target).apps
+        OldAuthor = old_apps.get_model("catalog", "Author")
+        OldBook = old_apps.get_model("catalog", "Book")
+
+        author = OldAuthor.objects.create(full_name="Автор до миграции")
+        book = OldBook.objects.create(
+            title="Книга до миграции",
+            publication_year=2000,
+        )
+        book.authors.add(author)
+        book_id = book.pk
+        author_id = author.pk
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(new_target)
+        new_apps = executor.loader.project_state(new_target).apps
+        NewBook = new_apps.get_model("catalog", "Book")
+
+        saved_book = NewBook.objects.get(pk=book_id)
+        self.assertEqual(NewBook.objects.count(), 1)
+        self.assertEqual(saved_book.title, "Книга до миграции")
+        self.assertEqual(saved_book.publication_year, 2000)
+        self.assertEqual(saved_book.description, "")
+        self.assertEqual(
+            list(saved_book.authors.values_list("pk", flat=True)),
+            [author_id],
+        )
+
+        saved_book.description = "Описание после миграции"
+        saved_book.save(update_fields=["description"])
+        saved_book.refresh_from_db()
+        self.assertEqual(saved_book.description, "Описание после миграции")

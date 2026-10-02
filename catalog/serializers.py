@@ -37,7 +37,7 @@ class BookSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ["id", "title", "publication_year", "author_ids"]
+        fields = ["id", "title", "description", "publication_year", "author_ids"]
         read_only_fields = ["id"]
 
     def validate_author_ids(self, authors):
