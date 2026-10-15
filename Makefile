@@ -50,3 +50,21 @@ verify:
 >$(PYTHON) manage.py makemigrations --check --dry-run
 >$(MAKE) sast
 >$(MAKE) test
+
+
+DOCKER ?= docker
+CONTAINER_PYTHON ?= python3
+
+.PHONY: container-check
+
+container-check:
+>$(CONTAINER_PYTHON) scripts/container_check.py --docker "$(DOCKER)"
+
+# Linux: update an existing Compose application after mandatory acceptance.
+CONTAINER_ENV ?= .env.container
+CONTAINER_PROJECT ?=
+
+.PHONY: container-update
+
+container-update: container-check
+>bash scripts/container_update.sh "$(DOCKER)" "$(CONTAINER_ENV)" "$(CONTAINER_PROJECT)"

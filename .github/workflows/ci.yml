@@ -39,3 +39,37 @@ jobs:
 
       - name: Run checks
         run: make verify
+
+  container-check:
+    name: Container check
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Check Docker tools
+        run: |
+          docker version
+          docker compose version
+
+      - name: Check container environment
+        shell: bash
+        run: |
+          make container-check CONTAINER_PYTHON=python 2>&1 | tee "$RUNNER_TEMP/container-check.log"
+
+      - name: Save container check log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-check-log
+          path: ${{ runner.temp }}/container-check.log
+          if-no-files-found: warn
+          retention-days: 7
