@@ -70,3 +70,8 @@ CONTAINER_PROJECT ?=
 
 container-update: container-check
 >bash scripts/container_update.sh "$(DOCKER)" "$(CONTAINER_ENV)" "$(CONTAINER_PROJECT)"
+
+.PHONY: secret-check
+
+secret-check:
+>bash scripts/secret_check.sh

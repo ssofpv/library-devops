@@ -1,0 +1,10 @@
+title = "Library secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "lr5-demo-secret"
+description = "Synthetic secret for the laboratory demonstration"
+regex = '''LR5_DEMO_SECRET_[A-Za-z0-9]{24}'''
+keywords = ["LR5_DEMO_SECRET_"]

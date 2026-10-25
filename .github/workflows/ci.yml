@@ -8,6 +8,29 @@ permissions:
   contents: read
 
 jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Get complete Git history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan for secrets
+        run: make secret-check
+
+      - name: Save secret scan report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: secret-scan-report
+          path: reports/gitleaks.json
+          if-no-files-found: warn
+          retention-days: 14
   checks:
     name: Checks / ${{ matrix.check }}
     runs-on: ubuntu-24.04
@@ -54,7 +77,7 @@ jobs:
           retention-days: 14
   verify:
     name: Verify Python ${{ matrix.python-version }}
-    needs: checks
+    needs: [checks, secret-scan]
     if: always()
     runs-on: ubuntu-latest
 
@@ -72,7 +95,10 @@ jobs:
       - name: Require successful checks
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
-        run: test "$CHECKS_RESULT" = success
+          SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
+        run: |
+          test "$CHECKS_RESULT" = success
+          test "$SECRET_SCAN_RESULT" = success
 
       - name: Get project files
         uses: actions/checkout@v4
