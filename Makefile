@@ -75,3 +75,9 @@ container-update: container-check
 
 secret-check:
 >bash scripts/secret_check.sh
+
+.PHONY: dependency-check
+
+dependency-check:
+>$(PYTHON) -c "from pathlib import Path; Path('reports').mkdir(exist_ok=True)"
+>$(PYTHON) -m pip_audit -r requirements-dev.txt --strict --format json --output reports/pip-audit.json
