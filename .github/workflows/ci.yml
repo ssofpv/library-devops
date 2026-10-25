@@ -43,6 +43,15 @@ jobs:
 
       - name: Run selected check
         run: make ${{ matrix.check }}
+        
+      - name: Save analyzer reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: analyzer-reports-${{ matrix.check }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
   verify:
     name: Verify Python ${{ matrix.python-version }}
     needs: checks

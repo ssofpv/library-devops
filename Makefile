@@ -34,11 +34,13 @@ test:
 >$(PYTHON) -m coverage xml
 
 quality:
->$(PYTHON) -m ruff check .
+>$(PYTHON) -c "from pathlib import Path; Path('reports').mkdir(exist_ok=True)"
+>$(PYTHON) -m ruff check . --output-format json --output-file reports/ruff.json
 >$(PYTHON) -m ruff format --check .
 
 sast:
->$(PYTHON) -m bandit -r catalog inventory config -x "catalog/tests.py,catalog/test_books_api.py,catalog/test_web.py,inventory/tests.py,inventory/test_copies_api.py,inventory/test_web.py,config/tests.py,config/test_auth.py,catalog/migrations,inventory/migrations"
+>$(PYTHON) -c "from pathlib import Path; Path('reports').mkdir(exist_ok=True)"
+>$(PYTHON) -m bandit -r catalog inventory config -x "catalog/tests.py,catalog/test_books_api.py,catalog/test_web.py,inventory/tests.py,inventory/test_copies_api.py,inventory/test_web.py,config/tests.py,config/test_auth.py,catalog/migrations,inventory/migrations" -f json -o reports/bandit.json
 
 format:
 >$(PYTHON) -m ruff check . --select I --fix

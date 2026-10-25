@@ -32,3 +32,5 @@ backups
 
 staticfiles
 upload
+
+reports/
