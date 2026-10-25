@@ -8,8 +8,45 @@ permissions:
   contents: read
 
 jobs:
+  checks:
+    name: Checks / ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ["quality", "sast"]
+
+    env:
+      DJANGO_SECRET_KEY: "ci-only-test-key-not-for-deployment"
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,testserver"
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: make setup
+
+      - name: Run selected check
+        run: make ${{ matrix.check }}
   verify:
     name: Verify Python ${{ matrix.python-version }}
+    needs: checks
+    if: always()
     runs-on: ubuntu-latest
 
     strategy:
@@ -23,6 +60,11 @@ jobs:
       DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,testserver"
 
     steps:
+      - name: Require successful checks
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+        run: test "$CHECKS_RESULT" = success
+
       - name: Get project files
         uses: actions/checkout@v4
 
@@ -41,8 +83,13 @@ jobs:
       - name: Install dependencies
         run: make setup
 
-      - name: Run checks
-        run: make verify
+      - name: Check Django configuration and migrations
+        run: |
+          .venv/bin/python manage.py check
+          .venv/bin/python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: make test
         
       - name: Save test reports
         if: always()
