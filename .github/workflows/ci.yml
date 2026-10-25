@@ -30,6 +30,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Create virtual environment
         run: python -m venv .venv
@@ -39,6 +43,17 @@ jobs:
 
       - name: Run checks
         run: make verify
+        
+      - name: Save test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: python-reports-${{ matrix.python-version }}
+          path: |
+            test-results/
+            coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
 
   container-check:
     name: Container check
