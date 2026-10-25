@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: ["quality", "sast"]
+        check: ["quality", "sast", "dependency-check"]
 
     env:
       DJANGO_SECRET_KEY: "ci-only-test-key-not-for-deployment"

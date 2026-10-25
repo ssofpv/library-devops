@@ -3,3 +3,4 @@ ruff==0.16.6
 coverage==7.16.2
 bandit==1.9.4
 unittest-xml-reporting==4.0.0
+pip-audit==2.9.0
