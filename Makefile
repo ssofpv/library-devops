@@ -60,7 +60,7 @@ CONTAINER_PYTHON ?= python3
 .PHONY: container-check
 
 container-check:
->$(CONTAINER_PYTHON) scripts/container_check.py --docker "$(DOCKER)"
+>$(CONTAINER_PYTHON) scripts/container_check.py --docker "$(DOCKER)" $(if $(CANDIDATE_IMAGE),--candidate-image "$(CANDIDATE_IMAGE)")
 
 # Linux: update an existing Compose application after mandatory acceptance.
 CONTAINER_ENV ?= .env.container

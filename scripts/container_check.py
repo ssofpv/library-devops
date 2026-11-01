@@ -191,13 +191,14 @@ print("Image files and secret environment: OK")
 
 
 class Checker:
-    def __init__(self, root, docker, folder):
+    def __init__(self, root, docker, folder, candidate_image=None):
         self.root = root
         self.docker = shlex.split(docker)
         require(self.docker, "Docker command cannot be empty")
         self.project = "library-cc-" + secrets.token_hex(6)
         self.restore_project = self.project + "-restore"
         self.image = "library-container-check:" + self.project
+        self.candidate_image = candidate_image
         self.env = os.environ.copy()
         self.settings = {
             "DJANGO_SECRET_KEY": secrets.token_urlsafe(48),
@@ -424,8 +425,15 @@ class Checker:
             self.probe_owned = True
             probe.write("MUST_NOT_BE_IN_IMAGE=" + secrets.token_hex(24))
         self.probe.chmod(0o600)
-        step("Building disposable application image (revision 1)")
-        self.build(1)
+        if self.candidate_image:
+            step("Using the existing candidate image")
+            self.command(
+                self.docker + ["image", "tag", self.candidate_image, self.image],
+                timeout=60,
+            )
+        else:
+            step("Building disposable application image (revision 1)")
+            self.build(1)
         self.command(
             self.docker + ["run", "--rm", "--entrypoint", "python", self.image, "-c", IMAGE_CHECK]
         )
@@ -459,6 +467,17 @@ class Checker:
             return
         step("Waiting for the application to become healthy")
         self.start("app", "db")
+        if self.candidate_image:
+            candidate_id = self.text(
+                self.command(
+                    self.docker + ["image", "inspect", "--format", "{{.Id}}", self.candidate_image]
+                )
+            )
+            require(
+                self.inspect("app")["Image"] == candidate_id,
+                "Running application does not use the candidate image",
+            )
+            step(f"Running application uses candidate image: {candidate_id}")
         for service in ("app", "db"):
             self.runtime_policy(service)
         require(self.http() == (200, {"status": "ok"}), "Health endpoint must return HTTP 200")
@@ -604,12 +623,21 @@ def main():
         default="full",
         help="Select the acceptance stage",
     )
+    parser.add_argument(
+        "--candidate-image",
+        help="Use an existing local image as the initial application image",
+    )
     arguments = parser.parse_args()
     checker = None
     failure = None
     with tempfile.TemporaryDirectory(prefix="library-container-check-") as temporary:
         try:
-            checker = Checker(arguments.root.resolve(), arguments.docker, Path(temporary))
+            checker = Checker(
+                arguments.root.resolve(),
+                arguments.docker,
+                Path(temporary),
+                candidate_image=arguments.candidate_image,
+            )
             checker.run(stage=arguments.stage)
         except (
             CheckError,
