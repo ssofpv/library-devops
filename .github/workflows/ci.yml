@@ -66,7 +66,7 @@ jobs:
 
       - name: Run selected check
         run: make ${{ matrix.check }}
-        
+
       - name: Save analyzer reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -162,7 +162,7 @@ jobs:
 
       - name: Run tests
         run: make test
-        
+
       - name: Save test reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -268,3 +268,40 @@ jobs:
           path: ${{ runner.temp }}/container-check.log
           if-no-files-found: warn
           retention-days: 7
+  publish-image:
+    name: Publish image to GHCR
+    needs: [build-image, container-check]
+    if: >-
+      ${{
+        github.event_name == 'push' &&
+        github.ref == 'refs/heads/main' &&
+        needs.build-image.result == 'success' &&
+        needs.container-check.result == 'success'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download checked image
+        uses: actions/download-artifact@v7
+        with:
+          name: candidate-image
+          path: ${{ runner.temp }}
+
+      - name: Load checked image
+        run: docker load -i "$RUNNER_TEMP/candidate-image.tar"
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Tag and publish image
+        run: |
+          IMAGE_NAME="ghcr.io/ssofpv/library-devops:${GITHUB_SHA}"
+          docker tag "library-candidate:${GITHUB_SHA}" "$IMAGE_NAME"
+          docker push "$IMAGE_NAME"
