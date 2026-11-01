@@ -239,6 +239,8 @@ jobs:
         run: |
           docker run --rm --entrypoint python \
             "library-candidate:${GITHUB_SHA}" -m pip list
+          docker run --rm --entrypoint python \
+            "library-candidate:${GITHUB_SHA}" -m pip debug
 
       - name: Scan candidate image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
