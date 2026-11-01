@@ -242,6 +242,11 @@ jobs:
           docker run --rm --entrypoint python \
             "library-candidate:${GITHUB_SHA}" -m pip debug
 
+      - name: Check container environment
+        shell: bash
+        run: |
+          make container-check CONTAINER_PYTHON=python CANDIDATE_IMAGE="library-candidate:${GITHUB_SHA}" 2>&1 | tee "$RUNNER_TEMP/container-check.log"
+
       - name: Scan candidate image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -261,11 +266,6 @@ jobs:
           path: trivy-report.json
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Check container environment
-        shell: bash
-        run: |
-          make container-check CONTAINER_PYTHON=python CANDIDATE_IMAGE="library-candidate:${GITHUB_SHA}" 2>&1 | tee "$RUNNER_TEMP/container-check.log"
 
       - name: Save container check log
         if: always()
