@@ -235,6 +235,11 @@ jobs:
       - name: Load candidate image
         run: docker load -i "$RUNNER_TEMP/candidate-image.tar"
 
+      - name: Inspect installed Python packages
+        run: |
+          docker run --rm --entrypoint python \
+            "library-candidate:${GITHUB_SHA}" -m pip list
+
       - name: Scan candidate image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
