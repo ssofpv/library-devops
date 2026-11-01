@@ -81,3 +81,11 @@ secret-check:
 dependency-check:
 >$(PYTHON) -c "from pathlib import Path; Path('reports').mkdir(exist_ok=True)"
 >$(PYTHON) -m pip_audit -r requirements-dev.txt --strict --format json --output reports/pip-audit.json
+
+.PHONY: db-migrations db-backup
+
+db-migrations:
+>$(CONTAINER_PYTHON) scripts/container_check.py --docker "$(DOCKER)" --stage migrations
+
+db-backup:
+>$(CONTAINER_PYTHON) scripts/container_check.py --docker "$(DOCKER)" --stage backup

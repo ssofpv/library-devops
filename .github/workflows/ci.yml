@@ -75,9 +75,44 @@ jobs:
           path: reports/
           if-no-files-found: warn
           retention-days: 14
+
+  db-checks:
+    name: Database / ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ["db-migrations", "db-backup"]
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Run database check
+        shell: bash
+        run: |
+          set -o pipefail
+          make "${{ matrix.check }}" CONTAINER_PYTHON=python 2>&1 | tee "$RUNNER_TEMP/${{ matrix.check }}.log"
+
+      - name: Save database check log
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.check }}-log
+          path: ${{ runner.temp }}/${{ matrix.check }}.log
+          if-no-files-found: warn
+          retention-days: 14
+
   verify:
     name: Verify Python ${{ matrix.python-version }}
-    needs: [checks, secret-scan]
+    needs: [checks, secret-scan, db-checks]
     if: always()
     runs-on: ubuntu-latest
 
@@ -96,9 +131,11 @@ jobs:
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
           SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
+          DB_CHECKS_RESULT: ${{ needs.db-checks.result }}
         run: |
           test "$CHECKS_RESULT" = success
           test "$SECRET_SCAN_RESULT" = success
+          test "$DB_CHECKS_RESULT" = success
 
       - name: Get project files
         uses: actions/checkout@v4

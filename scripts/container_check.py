@@ -412,7 +412,7 @@ class Checker:
             f"{service}: process UID={pid_uid}, memory={host['Memory']} bytes, CPU={host['NanoCpus'] / 1e9:g}"
         )
 
-    def run(self):
+    def run(self, stage="full"):
         step("Checker version: polling-v3")
         step("Checking Dockerfile and Compose policy")
         check_source(self.root)
@@ -433,10 +433,30 @@ class Checker:
         self.projects_started.append(False)
         step("Waiting for isolated PostgreSQL to become healthy")
         self.start("db")
+        step("Checking Django configuration and migration files")
+        self.compose("run", "--rm", "--no-deps", "-T", "app", "python", "manage.py", "check")
+        self.compose(
+            "run",
+            "--rm",
+            "--no-deps",
+            "-T",
+            "app",
+            "python",
+            "manage.py",
+            "makemigrations",
+            "--check",
+            "--dry-run",
+        )
         step("Applying migrations in the isolated database")
         self.compose(
             "run", "--rm", "--no-deps", "-T", "app", "python", "manage.py", "migrate", "--noinput"
         )
+        self.compose(
+            "run", "--rm", "--no-deps", "-T", "app", "python", "manage.py", "migrate", "--check"
+        )
+        if stage == "migrations":
+            step("Migrations check passed")
+            return
         step("Waiting for the application to become healthy")
         self.start("app", "db")
         for service in ("app", "db"):
@@ -486,6 +506,9 @@ class Checker:
             input_data=dump,
         )
         require(self.snapshot(restore=True) == before, "Restored data differs from the original")
+        if stage == "backup":
+            step("Backup and restore check passed")
+            return
         self.compose("stop", "db", restore=True)
         step("Checking HTTP 503 and unhealthy status while PostgreSQL is stopped")
         self.compose("stop", "db")
@@ -575,13 +598,19 @@ def main():
         "--docker", default="docker", help='Docker command, for example "sudo docker"'
     )
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="Repository directory")
+    parser.add_argument(
+        "--stage",
+        choices=["full", "migrations", "backup"],
+        default="full",
+        help="Select the acceptance stage",
+    )
     arguments = parser.parse_args()
     checker = None
     failure = None
     with tempfile.TemporaryDirectory(prefix="library-container-check-") as temporary:
         try:
             checker = Checker(arguments.root.resolve(), arguments.docker, Path(temporary))
-            checker.run()
+            checker.run(stage=arguments.stage)
         except (
             CheckError,
             OSError,
