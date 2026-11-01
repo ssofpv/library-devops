@@ -216,6 +216,9 @@ jobs:
       - name: Build experimental image
         run: docker build -f Dockerfile.alpine-test -t library-alpine-test:ci .
 
+      - name: Check experimental image
+        run: make container-check CONTAINER_PYTHON=python3 CANDIDATE_IMAGE=library-alpine-test:ci
+
       - name: Scan experimental image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -235,7 +238,7 @@ jobs:
           path: alpine-test-report.json
           if-no-files-found: warn
           retention-days: 14
-          
+
   build-image:
     name: Build candidate image
     needs: verify
