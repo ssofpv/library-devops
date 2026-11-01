@@ -13,7 +13,8 @@ COPY requirements.txt ./
 
 RUN python -m pip install --no-cache-dir pip==26.2.2 \
     && python -m pip install --no-cache-dir -r requirements.txt \
-    && python -m pip check
+    && python -m pip check \
+    && python -m pip uninstall -y pip
 
 COPY --chown=library:library . .
 
