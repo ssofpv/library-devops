@@ -174,13 +174,45 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  build-image:
+    name: Build candidate image
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t "library-candidate:${GITHUB_SHA}" .
+
+      - name: Save image
+        run: docker save "library-candidate:${GITHUB_SHA}" -o "$RUNNER_TEMP/candidate-image.tar"
+
+      - name: Upload image
+        uses: actions/upload-artifact@v6
+        with:
+          name: candidate-image
+          path: ${{ runner.temp }}/candidate-image.tar
+          if-no-files-found: error
+          retention-days: 1
+
   container-check:
     name: Container check
-    needs: verify
+    needs: [verify, build-image]
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
+      - name: Require successful build and verification
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          BUILD_RESULT: ${{ needs.build-image.result }}
+        run: |
+          test "$VERIFY_RESULT" = success
+          test "$BUILD_RESULT" = success
       - name: Get project files
         uses: actions/checkout@v4
 
@@ -194,10 +226,39 @@ jobs:
           docker version
           docker compose version
 
+      - name: Download candidate image
+        uses: actions/download-artifact@v7
+        with:
+          name: candidate-image
+          path: ${{ runner.temp }}
+
+      - name: Load candidate image
+        run: docker load -i "$RUNNER_TEMP/candidate-image.tar"
+
       - name: Check container environment
         shell: bash
         run: |
-          make container-check CONTAINER_PYTHON=python 2>&1 | tee "$RUNNER_TEMP/container-check.log"
+          make container-check CONTAINER_PYTHON=python CANDIDATE_IMAGE="library-candidate:${GITHUB_SHA}" 2>&1 | tee "$RUNNER_TEMP/container-check.log"
+
+      - name: Scan candidate image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: library-candidate:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          format: json
+          output: trivy-report.json
+          exit-code: "1"
+
+      - name: Save Trivy report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: trivy-image-report
+          path: trivy-report.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Save container check log
         if: always()
