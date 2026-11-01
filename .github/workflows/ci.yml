@@ -174,71 +174,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  compare-base-images:
-    name: Compare base / ${{ matrix.base }}
-    runs-on: ubuntu-24.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        base: ["bookworm", "alpine"]
-
-    steps:
-      - name: Scan Python base image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: image
-          image-ref: python:3.14-${{ matrix.base }}
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          format: json
-          output: base-report.json
-          exit-code: "0"
-
-      - name: Save comparison report
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: base-report-${{ matrix.base }}
-          path: base-report.json
-          if-no-files-found: warn
-          retention-days: 14
-
-  test-alpine-image:
-    name: Test Alpine image
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-
-    steps:
-      - name: Get project files
-        uses: actions/checkout@v4
-
-      - name: Build experimental image
-        run: docker build -f Dockerfile.alpine-test -t library-alpine-test:ci .
-
-      - name: Check experimental image
-        run: make container-check CONTAINER_PYTHON=python3 CANDIDATE_IMAGE=library-alpine-test:ci
-
-      - name: Scan experimental image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: image
-          image-ref: library-alpine-test:ci
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          format: json
-          output: alpine-test-report.json
-          exit-code: "0"
-
-      - name: Save experimental report
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: alpine-test-report
-          path: alpine-test-report.json
-          if-no-files-found: warn
-          retention-days: 14
-
   build-image:
     name: Build candidate image
     needs: verify
@@ -299,13 +234,6 @@ jobs:
 
       - name: Load candidate image
         run: docker load -i "$RUNNER_TEMP/candidate-image.tar"
-
-      - name: Inspect installed Python packages
-        run: |
-          docker run --rm --entrypoint python \
-            "library-candidate:${GITHUB_SHA}" -m pip list
-          docker run --rm --entrypoint python \
-            "library-candidate:${GITHUB_SHA}" -m pip debug
 
       - name: Check container environment
         shell: bash

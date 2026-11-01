@@ -1,4 +1,4 @@
-FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+FROM python:3.14-alpine@sha256:eb2c62658b8d51bff0acc408504b76521d02030de56a8a3c1e830083e89b89d2
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -6,16 +6,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN groupadd --gid 10001 library \
-    && useradd --uid 10001 --gid library \
-        --no-create-home --no-log-init \
-        --shell /usr/sbin/nologin library
+RUN addgroup -g 10001 -S library \
+    && adduser -u 10001 -S -D -H -G library -s /sbin/nologin library
 
 COPY requirements.txt ./
 
 RUN python -m pip install --no-cache-dir pip==26.2.2 \
     && python -m pip install --no-cache-dir -r requirements.txt \
-    && python -m pip check
+    && python -m pip check \
+    && python -m pip uninstall -y pip
 
 COPY --chown=library:library . .
 
