@@ -17,6 +17,9 @@ RUN python -m pip install --no-cache-dir pip==26.2.2 \
     && python -m pip uninstall -y pip
 
 COPY --chown=library:library . .
+ARG APP_REVISION=unknown
+RUN printf '%s\n' "$APP_REVISION" > /app/build-version.txt \
+    && chmod 444 /app/build-version.txt
 
 RUN mkdir -p /app/staticfiles \
     && chown library:library /app/staticfiles
