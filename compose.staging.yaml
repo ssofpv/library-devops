@@ -1,0 +1,41 @@
+name: library-staging
+
+services:
+  db:
+    extends:
+      file: compose.yaml
+      service: db
+
+  app:
+    image: ghcr.io/ssofpv/library-devops:${APP_IMAGE_TAG:?Set APP_IMAGE_TAG}
+    user: "10001:10001"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS}
+      DJANGO_DB_ENGINE: postgresql
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-18000}:8000"
+    networks:
+      - frontend
+      - backend
+    mem_limit: 512m
+    cpus: 1.0
+    stop_grace_period: 40s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  frontend:
+  backend:
+    internal: true
