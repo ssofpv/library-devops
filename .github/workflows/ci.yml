@@ -185,7 +185,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build image
-        run: docker build -t "library-candidate:${GITHUB_SHA}" .
+        run: >-
+          docker build
+          --build-arg APP_REVISION="${GITHUB_SHA}"
+          -t "library-candidate:${GITHUB_SHA}" .
 
       - name: Save image
         run: docker save "library-candidate:${GITHUB_SHA}" -o "$RUNNER_TEMP/candidate-image.tar"
