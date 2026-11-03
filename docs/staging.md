@@ -37,8 +37,62 @@ sudo env \
 Временные значения используются только для разбора конфигурации.
 Команда не запускает контейнеры и не проверяет доступность образа.
 
-## Состояние
+## Проверенное состояние
 
-Конфигурация проверена на library-app, код завершения — 0.
-Развертывание, миграции, доступ к GHCR и приемка приложения
-проверяются на следующем этапе.
+На ВМ library-app запущен отдельный проект library-staging.
+
+- Образ приложения получен из GHCR без сборки на сервере:
+  ghcr.io/ssofpv/library-devops:7316fc27720b1e7fb5149e5fb95b9ca15c07c32f.
+- Создан отдельный том library-staging_postgres_data.
+- Реальные настройки хранятся в ~/lr6-staging-check/.env.staging
+  с правами 600, вне Git и образа.
+- Миграции применены успешно.
+- Контейнеры app и db имеют статус healthy.
+- GET http://192.168.56.10:18000/health/ возвращает {"status": "ok"}.
+- Проверены вход и создание книги, филиала и экземпляра LR6-001.
+- Экземпляр отображается в списке после сохранения.
+
+PR #97 добавил конфигурацию окружения.
+Результаты запуска зафиксированы в Issue #96.
+
+Автоматическое развертывание, /version/ и откат пока не реализованы.
+
+## Команды первого запуска
+
+Команды выполняются на library-app из ~/lr6-staging-check.
+Перед запуском должен быть подготовлен .env.staging с отдельными
+секретами и настройками тестовой базы. Секреты не публикуются.
+
+Получение готовых образов:
+
+```bash
+sudo docker compose --env-file .env.staging -f compose.staging.yaml pull
+
+```
+
+Запуск тестовой БД:
+
+```bash
+sudo docker compose --env-file .env.staging -f compose.staging.yaml up -d --wait db
+```
+
+Применение миграций к тестовой БД:
+
+```bash
+sudo docker compose --env-file .env.staging -f compose.staging.yaml run --rm --no-deps --pull never app python manage.py migrate --noinput
+```
+
+Запуск приложения без сборки:
+
+```bash
+sudo docker compose --env-file .env.staging -f compose.staging.yaml up -d --no-build --pull never --wait app
+```
+
+Проверка доступности:
+
+```bash
+curl --fail --show-error --max-time 10 http://192.168.56.10:18000/health/
+```
+
+После запуска необходимо отдельно проверить вход и основной
+пользовательский сценарий. Статус healthy не заменяет эту проверку.
