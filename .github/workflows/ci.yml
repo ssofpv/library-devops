@@ -160,6 +160,9 @@ jobs:
           .venv/bin/python manage.py check
           .venv/bin/python manage.py makemigrations --check --dry-run
 
+      - name: Test staging deployment barriers
+        run: .venv/bin/python scripts/test_deploy_staging.py
+
       - name: Run tests
         run: make test
 
@@ -308,3 +311,56 @@ jobs:
           IMAGE_NAME="ghcr.io/ssofpv/library-devops:${GITHUB_SHA}"
           docker tag "library-candidate:${GITHUB_SHA}" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
+
+  deploy-staging:
+    name: Deploy and accept staging release
+    needs: publish-image
+    if: >-
+      ${{
+        github.event_name == 'push' &&
+        github.ref == 'refs/heads/main' &&
+        needs.publish-image.result == 'success'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: library-staging-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Connect to the staging network
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:library-cd
+          ping: 100.89.219.57
+
+      - name: Deploy published SHA and require acceptance
+        shell: bash
+        env:
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_SSH_KEY"
+          test -n "$STAGING_KNOWN_HOSTS"
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          umask 077
+          key_dir=$(mktemp -d)
+          trap 'rm -rf "$key_dir"' EXIT
+          printf '%s\n' "$STAGING_SSH_KEY" > "$key_dir/key"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$key_dir/known_hosts"
+          ssh-keygen -y -P '' -f "$key_dir/key" > /dev/null
+          ssh -i "$key_dir/key" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$key_dir/known_hosts" \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            library-deploy@100.89.219.57 \
+            "sudo -n /usr/bin/python3 /opt/library-staging/deploy_staging.py ${GITHUB_SHA}"
