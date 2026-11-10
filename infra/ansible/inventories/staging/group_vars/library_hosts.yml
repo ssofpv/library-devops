@@ -1,0 +1,5 @@
+---
+library_environment: staging
+library_compose_project: library-staging
+library_deploy_dir: /opt/library-staging
+library_http_port: 18000

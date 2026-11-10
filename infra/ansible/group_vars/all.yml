@@ -1,0 +1,4 @@
+---
+library_container_port: 8000
+library_health_path: /health/
+library_version_path: /version/

@@ -1,0 +1,3 @@
+---
+ansible_host: "{{ lookup('ansible.builtin.env', 'LIBRARY_LAB_HOST', default=undef()) }}"
+ansible_user: "{{ lookup('ansible.builtin.env', 'LIBRARY_LAB_SSH_USER', default=undef()) }}"

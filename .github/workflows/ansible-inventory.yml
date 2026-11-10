@@ -1,0 +1,42 @@
+name: Ansible inventory
+
+on:
+  push:
+    paths:
+      - 'infra/ansible/**'
+      - '.github/workflows/ansible-inventory.yml'
+  pull_request:
+    paths:
+      - 'infra/ansible/**'
+      - '.github/workflows/ansible-inventory.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    name: Inventory (${{ matrix.environment }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [lab, staging]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Show and verify inventory
+        shell: bash
+        env:
+          INVENTORY_ENVIRONMENT: ${{ matrix.environment }}
+        run: |
+          inventory="infra/ansible/inventories/${INVENTORY_ENVIRONMENT}/hosts.yml"
+          expected_host="library_${INVENTORY_ENVIRONMENT}"
+
+          ansible-inventory --version
+          ansible-inventory --playbook-dir infra/ansible -i "$inventory" --graph
+          ansible-inventory --playbook-dir infra/ansible -i "$inventory" --list |
+            jq -e --arg host "$expected_host" '
+              .library_hosts.hosts == [$host] and (._meta.hostvars | keys) == [$host]
+            '
