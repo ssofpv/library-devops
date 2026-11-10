@@ -1,0 +1,5 @@
+---
+library_environment: lab
+library_compose_project: library-lab
+library_deploy_dir: /opt/library-lab
+library_http_port: 18001
