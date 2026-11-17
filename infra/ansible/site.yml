@@ -1,0 +1,23 @@
+---
+- name: Prepare the library host
+  hosts: library_hosts
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Check the selected environment
+      ansible.builtin.assert:
+        that:
+          - library_environment == 'lab'
+          - (ansible_play_hosts_all | length) == 1
+        fail_msg: "This bootstrap stage supports exactly one lab host."
+
+    - name: Check the supported operating system
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - ansible_facts['distribution_version'] is version('24.04', '==')
+        fail_msg: "Ubuntu Server 24.04 is required."
+
+  roles:
+    - role: bootstrap

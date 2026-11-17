@@ -22,10 +22,24 @@ jobs:
       fail-fast: false
       matrix:
         environment: [lab, staging]
+
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned Ansible
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/library-ansible"
+          "$RUNNER_TEMP/library-ansible/bin/python" -m pip install -r infra/ansible/requirements.txt
+          echo "$RUNNER_TEMP/library-ansible/bin" >> "$GITHUB_PATH"
+
       - name: Show and verify inventory
         shell: bash
         env:
@@ -40,3 +54,19 @@ jobs:
             jq -e --arg host "$expected_host" '
               .library_hosts.hosts == [$host] and (._meta.hostvars | keys) == [$host]
             '
+
+      - name: Check infrastructure syntax
+        shell: bash
+        env:
+          INVENTORY_ENVIRONMENT: ${{ matrix.environment }}
+          LIBRARY_LAB_HOST: "192.0.2.1"
+          LIBRARY_LAB_SSH_USER: "sofia"
+        run: |
+          set -euo pipefail
+
+          ansible-playbook \
+            -i "infra/ansible/inventories/${INVENTORY_ENVIRONMENT}/hosts.yml" \
+            infra/ansible/site.yml \
+            --syntax-check
+
+          sh -n infra/ansible/roles/bootstrap/files/apply-firewall.sh

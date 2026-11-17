@@ -1,0 +1,11 @@
+---
+- name: Create protected deployment directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - "{{ library_deploy_dir }}"
+    - "{{ library_deploy_dir }}/releases"

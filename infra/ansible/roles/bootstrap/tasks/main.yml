@@ -1,0 +1,39 @@
+---
+- name: Install required base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - openssh-server
+      - python3
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable and start SSH
+  ansible.builtin.systemd_service:
+    name: ssh
+    enabled: true
+    state: started
+
+
+- name: Configure the deployment account
+  ansible.builtin.import_tasks: users.yml
+
+- name: Configure deployment directories
+  ansible.builtin.import_tasks: directories.yml
+
+
+- name: Configure Docker
+  ansible.builtin.import_tasks: docker.yml
+
+
+- name: Configure administrator SSH keys
+  ansible.builtin.import_tasks: ssh_keys.yml
+
+
+- name: Configure SSH authentication
+  ansible.builtin.import_tasks: ssh.yml
+
+
+- name: Configure the firewall
+  ansible.builtin.import_tasks: firewall.yml

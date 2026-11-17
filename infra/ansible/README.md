@@ -1,49 +1,156 @@
-# Окружения Ansible для проекта «Библиотека»
+# Ansible для проекта «Библиотека»
 
-`lab` предназначено для первого прогона на отдельной чистой Ubuntu-ВМ.
-Для него зарезервированы проект Compose `library-lab`, каталог
-`/opt/library-lab` и порт приложения 18001. Когда ВМ будет готова, её
-SSH-адрес и имя администратора нужно задать на управляющей машине через
-`LIBRARY_LAB_HOST` и `LIBRARY_LAB_SSH_USER`. Для просмотра списка узлов
-эти значения не нужны.
+Ansible подготавливает отдельную Ubuntu Server 24.04 amd64.
+Текущий playbook разрешает применение только к одному узлу окружения lab.
+Настройка staging через эту роль пока заблокирована проверкой окружения.
 
-`staging` описывает действующую ВМ `library-app` с адресом
-`192.168.56.10` в сети VirtualBox. Проект `library-staging`, каталог
-`/opt/library-staging` и порт 18000 соответствуют конфигурации ЛР6.
-Для настройки хоста предусмотрена учётная запись администратора `sofia`.
-Учётная запись `library-deploy` используется действующим CD для выпуска.
-Production и прежняя ВМ `library-db` в эти списки не входят.
+## Окружения и параметры
 
-## Проверка списка узлов
+Окружение lab работает на ВМ library-lab. Проверенный адрес —
+192.168.56.105, администратор — sofia. Адрес получен через DHCP;
+перед новым применением его нужно проверить командой
+`ip -br -4 address` на library-lab.
 
-Выполнить из корня репозитория на Linux с установленным `ansible-core`
-(не ниже 2.13). Выбирать один инвентарь на запуск. Параметр
-`--playbook-dir` указывает, где искать общие переменные. Команды ниже
-читают файлы локально и не подключаются к ВМ.
+Для lab заданы проект Compose library-lab, каталог /opt/library-lab
+и порт приложения 18001. Развёртывание приложения в lab составляет
+следующий этап; текущая роль подготавливает Linux и Docker.
 
-```bash
-ansible-inventory --playbook-dir infra/ansible -i infra/ansible/inventories/lab/hosts.yml --graph
-```
+Окружение staging описывает действующую ВМ library-app:
+192.168.56.10, администратор sofia, проект library-staging,
+каталог /opt/library-staging и порт 18000. Учётная запись
+library-deploy используется существующим CD.
+Production и прежняя ВМ library-db в inventory не входят.
 
-В группе `library_hosts` должен быть только узел `library_lab`.
-
-```bash
-ansible-inventory --playbook-dir infra/ansible -i infra/ansible/inventories/staging/hosts.yml --graph
-```
-
-В группе `library_hosts` должен быть только узел `library_staging`.
-
-## Где хранятся параметры
-
-| Уровень | Расположение | Примеры |
+| Уровень | Расположение | Параметры |
 | --- | --- | --- |
-| Общий | `group_vars/all.yml` рядом с этим файлом | Внутренний порт приложения, пути `/health/` и `/version/` |
-| Окружение | `inventories/<окружение>/group_vars/library_hosts.yml` | Имя проекта Compose, каталог и внешний порт приложения |
-| Узел | `inventories/<окружение>/host_vars/<узел>.yml` | SSH-адрес и имя пользователя |
-| Секреты | Отдельный файл Ansible Vault для каждого окружения вне рабочей копии | Ключ Django, пароль PostgreSQL и пароль пользователя для приёмки |
+| Общий | group_vars/all.yml | Интерпретатор Python, версии Docker и Compose, общие параметры приложения |
+| Окружение | inventories/<окружение>/group_vars/library_hosts.yml | Проект Compose, каталог и порт приложения |
+| Узел | inventories/<окружение>/host_vars/<узел>.yml | SSH-адрес, пользователь, пути к ключам и сетевые ограничения |
+| Секреты | Вне репозитория | Закрытые ключи и пароли; для настроек приложения предусмотрены отдельные Vault-файлы |
 
-Vault-файлы и пароль к ним понадобятся на этапе написания ролей.
-Пароль Vault и закрытые SSH-ключи хранятся отдельно от репозитория.
-На действующем staging секреты остаются в серверных
-`.env.staging` и `.smoke.json` с правами `0600`. Тег текущего
-staging-образа обновляет сценарий CD после приёмки релиза.
+## Управляющая машина
+
+Для ручных проверок используется library-app. Ansible установлен
+в отдельное окружение ~/.venvs/library-ansible.
+Версия ansible-core 2.21.6 закреплена в requirements.txt;
+используется Python 3.12.
+
+Содержимое каталога infra/ansible скопировано на управляющую машину
+в ~/lr7-ansible-check. После изменения исходников эту копию необходимо
+обновлять. Команды ниже выполняются на library-app из этого каталога:
+
+```bash
+cd "$HOME/lr7-ansible-check"
+```
+
+На управляющей машине находятся публичные ключи
+~/.ssh/library_lab_ansible.pub и ~/.ssh/library_sofia_windows.pub.
+Закрытый ключ ~/.ssh/library_lab_ansible защищён парольной фразой
+и должен быть загружен в ssh-agent в текущем сеансе.
+
+Пароли SSH и sudo вводятся интерактивно.
+Закрытые ключи и пароли в Git не добавляются.
+Vault-файлы приложения на текущем этапе ещё не созданы.
+Существующие секреты staging остаются в серверных .env.staging
+и .smoke.json с правами 0600.
+
+## Проверки и применение
+
+На управляющей машине задаются параметры lab:
+
+```bash
+export LIBRARY_LAB_HOST=192.168.56.105
+export LIBRARY_LAB_SSH_USER=sofia
+```
+
+Проверка inventory lab:
+
+```bash
+~/.venvs/library-ansible/bin/ansible-inventory --playbook-dir . -i inventories/lab/hosts.yml --graph
+```
+
+В группе library_hosts должен быть только library_lab.
+
+Проверка inventory staging:
+
+```bash
+~/.venvs/library-ansible/bin/ansible-inventory --playbook-dir . -i inventories/staging/hosts.yml --graph
+```
+
+В группе library_hosts должен быть только library_staging.
+Выбирать один inventory на запуск.
+
+Проверка синтаксиса выполняется без подключения к целевой ВМ:
+
+```bash
+~/.venvs/library-ansible/bin/ansible-playbook -i inventories/lab/hosts.yml site.yml --syntax-check
+```
+
+```bash
+sh -n roles/bootstrap/files/apply-firewall.sh
+```
+
+Первый запуск на чистой ВМ с первоначальным парольным SSH-доступом:
+
+```bash
+~/.venvs/library-ansible/bin/ansible-playbook -i inventories/lab/hosts.yml site.yml --limit library_lab --ask-pass --ask-become-pass
+```
+
+После настройки используется вход по ключу:
+
+```bash
+~/.venvs/library-ansible/bin/ansible-playbook -i inventories/lab/hosts.yml site.yml --limit library_lab --private-key "$HOME/.ssh/library_lab_ansible" --ask-become-pass
+```
+
+На запрос BECOME password вводится пароль пользователя sofia
+от library-lab.
+
+## Требуемое состояние и права
+
+Роль bootstrap обеспечивает базовые пакеты, SSH, техническую
+учётную запись library-deploy, каталоги, Docker Engine, Compose
+и firewall. Версии Docker, CLI, containerd и Compose заданы явно.
+
+Учётная запись library-deploy имеет заблокированный пароль
+и только основную группу. Каталоги приложения и выпусков
+принадлежат root с правами 0700. Каталоги .ssh имеют права 0700,
+файл authorized_keys — 0600.
+
+SSH-конфигурация применяется после проверки входа администратора
+по ключу. Вход под root и парольная SSH-аутентификация запрещены.
+Перед перечитыванием службы проверяется конфигурация sshd.
+
+Для IPv4 разрешены SSH и опубликованный порт приложения 18001
+с Windows 192.168.56.1 и управляющей машины 192.168.56.10
+через enp0s8. Служебный DHCP-трафик сохраняется.
+Для IPv6 разрешены служебные ICMPv6 и DHCPv6.
+
+Сценарий apply-firewall.sh проверяет файлы правил, загружает
+управляемые цепочки и подключает их к INPUT и DOCKER-USER.
+Проверка существующих переходов предотвращает их дублирование.
+Служба library-firewall загружает правила при старте ВМ.
+Запуск Docker зависит от успешного запуска firewall.
+
+Изменения ролей, шаблонов, параметров доступа и workflow
+должны проходить ревью второй участницы перед слиянием в main.
+
+## Результаты проверки 17.11.2026
+
+| Проверка | Результат |
+| --- | --- |
+| Подготовка чистой library-lab | ok=31, changed=17, unreachable=0, failed=0 |
+| Повторный запуск | ok=28, changed=0, unreachable=0, failed=0 |
+| Восстановление ручной правки | Права /opt/library-lab изменены с 0700 на 0755; Ansible восстановил 0700, changed=1, failed=0 |
+| Перезагрузка | SSH-доступ восстановлен, проверка служб успешна, цепочки firewall загружены |
+| Права library-deploy | Только основная группа; групп sudo и docker нет |
+| Сетевые сокеты | Из нелокальных TCP-портов слушается SSH 22; DNS работает на loopback, DHCP используется для адресации |
+
+## Автоматические проверки
+
+Workflow ansible-inventory.yml проверяет inventory обоих окружений,
+синтаксис playbook и firewall-сценария. Версия Ansible закреплена.
+Эти проверки не подключаются к ВМ.
+
+Развёртывание приложения, Vault-настройки, автоматическая HTTP-приёмка
+после настройки и запуск инфраструктурного применения из pipeline/CD
+составляют следующие этапы ЛР7.

@@ -1,0 +1,75 @@
+---
+- name: Install firewall tools
+  ansible.builtin.apt:
+    name: iptables
+    state: present
+
+- name: Create firewall configuration directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /etc/library-firewall
+      mode: "0700"
+    - path: /etc/systemd/system/docker.service.d
+      mode: "0755"
+
+- name: Install validated firewall rules
+  ansible.builtin.template:
+    src: "firewall-v{{ item.version }}.rules.j2"
+    dest: "/etc/library-firewall/v{{ item.version }}.rules"
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "{{ item.restore }} --wait 5 --noflush --test %s"
+  loop:
+    - version: "4"
+      restore: /usr/sbin/iptables-restore
+    - version: "6"
+      restore: /usr/sbin/ip6tables-restore
+  notify: Apply library firewall
+
+- name: Install the firewall application script
+  ansible.builtin.copy:
+    src: apply-firewall.sh
+    dest: /usr/local/sbin/library-firewall
+    owner: root
+    group: root
+    mode: "0750"
+    validate: /bin/sh -n %s
+  notify: Apply library firewall
+
+- name: Install firewall service configuration
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - src: library-firewall.service
+      dest: /etc/systemd/system/library-firewall.service
+    - src: docker-firewall.conf
+      dest: /etc/systemd/system/docker.service.d/10-library-firewall.conf
+  notify: Apply library firewall
+
+- name: Validate the firewall service
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemd-analyze
+      - verify
+      - /etc/systemd/system/library-firewall.service
+  changed_when: false
+
+- name: Enable and start the firewall
+  ansible.builtin.systemd_service:
+    name: library-firewall
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: Apply pending firewall configuration
+  ansible.builtin.meta: flush_handlers

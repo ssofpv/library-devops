@@ -1,0 +1,8 @@
+# Managed by Ansible
+PermitRootLogin no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+AllowUsers {{ ansible_user }} {{ library_deploy_user }}

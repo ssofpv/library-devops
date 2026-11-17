@@ -1,0 +1,28 @@
+---
+- name: Create the deployment group
+  ansible.builtin.group:
+    name: "{{ library_deploy_user }}"
+    state: present
+
+- name: Configure the deployment account
+  ansible.builtin.user:
+    name: "{{ library_deploy_user }}"
+    group: "{{ library_deploy_user }}"
+    groups: ""
+    append: false
+    home: "/home/{{ library_deploy_user }}"
+    shell: /bin/bash
+    create_home: true
+    password_lock: true
+    state: present
+
+- name: Restrict deployment account directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ library_deploy_user }}"
+    group: "{{ library_deploy_user }}"
+    mode: "0700"
+  loop:
+    - "/home/{{ library_deploy_user }}"
+    - "/home/{{ library_deploy_user }}/.ssh"
