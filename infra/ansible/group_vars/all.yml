@@ -1,4 +1,9 @@
 ---
+ansible_python_interpreter: /usr/bin/python3
 library_container_port: 8000
 library_health_path: /health/
 library_version_path: /version/
+library_deploy_user: library-deploy
+library_docker_version: "5:29.10.0-1~ubuntu.24.04~noble"
+library_containerd_version: "2.4.2-4~ubuntu.24.04~noble"
+library_docker_compose_version: "5.7.1-1~ubuntu.24.04~noble"

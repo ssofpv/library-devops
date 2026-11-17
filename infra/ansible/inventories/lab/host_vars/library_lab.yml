@@ -1,3 +1,15 @@
 ---
 ansible_host: "{{ lookup('ansible.builtin.env', 'LIBRARY_LAB_HOST', default=undef()) }}"
 ansible_user: "{{ lookup('ansible.builtin.env', 'LIBRARY_LAB_SSH_USER', default=undef()) }}"
+library_admin_private_key_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.ssh/library_lab_ansible"
+library_admin_public_key_files:
+  - "{{ lookup('ansible.builtin.env', 'HOME') }}/.ssh/library_lab_ansible.pub"
+  - "{{ lookup('ansible.builtin.env', 'HOME') }}/.ssh/library_sofia_windows.pub"
+
+library_management_interface: enp0s8
+library_external_interfaces:
+  - enp0s3
+  - enp0s8
+library_management_sources:
+  - 192.168.56.1/32
+  - 192.168.56.10/32

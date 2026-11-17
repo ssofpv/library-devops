@@ -1,0 +1,49 @@
+---
+- name: Read the administrator account
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user }}"
+
+- name: Configure the administrator SSH directory
+  ansible.builtin.file:
+    path: "{{ ansible_facts['getent_passwd'][ansible_user][4] }}/.ssh"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_facts['getent_passwd'][ansible_user][2] }}"
+    mode: "0700"
+
+- name: Install administrator public keys
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_facts['getent_passwd'][ansible_user][4] }}/.ssh/authorized_keys"
+    line: "{{ lookup('ansible.builtin.file', item) | trim }}"
+    create: true
+    state: present
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_facts['getent_passwd'][ansible_user][2] }}"
+    mode: "0600"
+  loop: "{{ library_admin_public_key_files }}"
+
+- name: Verify administrator login using the Ansible key
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/ssh
+      - -o
+      - BatchMode=yes
+      - -o
+      - PreferredAuthentications=publickey
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - ControlPath=none
+      - -i
+      - "{{ library_admin_private_key_file }}"
+      - -p
+      - "{{ ansible_port | default(22) | string }}"
+      - "{{ ansible_user }}@{{ ansible_host }}"
+      - /usr/bin/true
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  when: not ansible_check_mode

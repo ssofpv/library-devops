@@ -1,0 +1,14 @@
+---
+- name: Configure SSH authentication
+  ansible.builtin.template:
+    src: sshd-library.conf.j2
+    dest: /etc/ssh/sshd_config.d/00-library.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Apply SSH configuration
+
+- name: Apply pending SSH configuration
+  ansible.builtin.meta: flush_handlers

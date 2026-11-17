@@ -1,0 +1,25 @@
+*filter
+:LIBRARY-INPUT - [0:0]
+:LIBRARY-DOCKER - [0:0]
+
+-A LIBRARY-INPUT -i lo -j ACCEPT
+-A LIBRARY-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+-A LIBRARY-INPUT -m conntrack --ctstate INVALID -j DROP
+{% for interface in library_external_interfaces %}
+-A LIBRARY-INPUT -i {{ interface }} -p udp --sport 67 --dport 68 -j ACCEPT
+{% endfor %}
+{% for source in library_management_sources %}
+-A LIBRARY-INPUT -i {{ library_management_interface }} -s {{ source }} -p tcp --dport {{ ansible_port | default(22) }} -j ACCEPT
+{% endfor %}
+-A LIBRARY-INPUT -j DROP
+
+-A LIBRARY-DOCKER -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+-A LIBRARY-DOCKER -m conntrack --ctstate INVALID -j DROP
+{% for source in library_management_sources %}
+-A LIBRARY-DOCKER -i {{ library_management_interface }} -s {{ source }} -p tcp -m conntrack --ctorigdst {{ ansible_host }} --ctorigdstport {{ library_http_port }} -j RETURN
+{% endfor %}
+{% for interface in library_external_interfaces %}
+-A LIBRARY-DOCKER -i {{ interface }} -j DROP
+{% endfor %}
+-A LIBRARY-DOCKER -j RETURN
+COMMIT

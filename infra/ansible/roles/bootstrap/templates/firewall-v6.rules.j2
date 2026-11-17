@@ -1,0 +1,20 @@
+*filter
+:LIBRARY-INPUT - [0:0]
+:LIBRARY-DOCKER - [0:0]
+
+-A LIBRARY-INPUT -i lo -j ACCEPT
+-A LIBRARY-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+-A LIBRARY-INPUT -m conntrack --ctstate INVALID -j DROP
+-A LIBRARY-INPUT -p ipv6-icmp -j ACCEPT
+{% for interface in library_external_interfaces %}
+-A LIBRARY-INPUT -i {{ interface }} -p udp --sport 547 --dport 546 -j ACCEPT
+{% endfor %}
+-A LIBRARY-INPUT -j DROP
+
+-A LIBRARY-DOCKER -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+-A LIBRARY-DOCKER -m conntrack --ctstate INVALID -j DROP
+{% for interface in library_external_interfaces %}
+-A LIBRARY-DOCKER -i {{ interface }} -j DROP
+{% endfor %}
+-A LIBRARY-DOCKER -j RETURN
+COMMIT
