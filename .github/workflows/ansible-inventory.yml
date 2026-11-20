@@ -70,3 +70,4 @@ jobs:
             --syntax-check
 
           sh -n infra/ansible/roles/bootstrap/files/apply-firewall.sh
+          sh -n infra/ansible/deploy-lab.sh
