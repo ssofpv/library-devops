@@ -12,8 +12,8 @@ Ansible подготавливает отдельную Ubuntu Server 24.04 amd6
 `ip -br -4 address` на library-lab.
 
 Для lab заданы проект Compose library-lab, каталог /opt/library-lab
-и порт приложения 18001. Развёртывание приложения в lab составляет
-следующий этап; текущая роль подготавливает Linux и Docker.
+и порт приложения 18001. Роль lab_application развёртывает приложение
+по запросу после подготовки Linux и Docker.
 
 Окружение staging описывает действующую ВМ library-app:
 192.168.56.10, администратор sofia, проект library-staging,
@@ -50,7 +50,6 @@ cd "$HOME/lr7-ansible-check"
 
 Пароли SSH и sudo вводятся интерактивно.
 Закрытые ключи и пароли в Git не добавляются.
-Vault-файлы приложения на текущем этапе ещё не созданы.
 Существующие секреты staging остаются в серверных .env.staging
 и .smoke.json с правами 0600.
 
@@ -105,6 +104,32 @@ sh -n roles/bootstrap/files/apply-firewall.sh
 На запрос BECOME password вводится пароль пользователя sofia
 от library-lab.
 
+## Развёртывание приложения на library-lab
+
+На контроллере создай каталог для Vault вне репозитория и зашифрованный файл:
+
+```bash
+install -d -m 0700 "$HOME/.config/library-lab"
+~/.venvs/library-ansible/bin/ansible-vault create "$HOME/.config/library-lab/vault.yml"
+```
+
+В файле нужны два поля, `django_secret_key` и `postgres_password`. Используй
+два независимо сгенерированных значения, например по одному вызову
+`openssl rand -hex 32` на поле. Сохрани пароль Vault отдельно. Для уже
+созданного тома PostgreSQL сохраняй тот же пароль БД.
+
+Из актуальной копии infra/ansible на контроллере запусти:
+
+```bash
+~/.venvs/library-ansible/bin/ansible-playbook -i inventories/lab/hosts.yml site.yml --limit library_lab --private-key "$HOME/.ssh/library_lab_ansible" --ask-become-pass --ask-vault-pass -e library_deploy_app=true
+```
+
+SHA образа задан в inventories/lab/group_vars/library_hosts.yml. Приложение
+публикуется только на адресе Host-only с портом 18001. Миграции выполняются
+до запуска веб-сервиса. Проверки обращаются к каталогу книг через Django ORM,
+а контроллер проверяет /health/ и /version/. Полный повтор с теми же
+параметрами должен дать changed=0.
+
 ## Требуемое состояние и права
 
 Роль bootstrap обеспечивает базовые пакеты, SSH, техническую
@@ -151,6 +176,4 @@ Workflow ansible-inventory.yml проверяет inventory обоих окру�
 синтаксис playbook и firewall-сценария. Версия Ansible закреплена.
 Эти проверки не подключаются к ВМ.
 
-Развёртывание приложения, Vault-настройки, автоматическая HTTP-приёмка
-после настройки и запуск инфраструктурного применения из pipeline/CD
-составляют следующие этапы ЛР7.
+Запуск инфраструктурного применения из pipeline/CD настраивается отдельно.

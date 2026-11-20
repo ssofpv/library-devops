@@ -1,0 +1,37 @@
+---
+- name: Record running containers before applying Compose
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['ps', '--status', 'running', '--quiet'] }}"
+  register: library_compose_before
+  changed_when: false
+
+- name: Start PostgreSQL and wait for it to be ready
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['up', '-d', '--wait', '--wait-timeout', '120', 'db'] }}"
+  changed_when: false
+
+- name: Apply pending Django migrations
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['run', '--rm', '--no-deps', '-T', 'app',
+             'python', 'manage.py', 'migrate', '--noinput', '--no-color'] }}"
+  register: library_migrations
+  changed_when: library_migrations.stdout is search('(?m)^  Applying ')
+
+- name: Start the web application and wait for its health check
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['up', '-d', '--wait', '--wait-timeout', '120', 'app'] }}"
+  changed_when: false
+
+- name: Report changes to the running containers
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['ps', '--status', 'running', '--quiet'] }}"
+  register: library_compose_after
+  changed_when: >
+    (library_compose_before.stdout_lines | sort) !=
+    (library_compose_after.stdout_lines | sort)
+
+- name: Check that the app can read the book catalog from PostgreSQL
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['exec', '-T', 'app', 'python', 'manage.py', 'shell', '-c',
+             'from catalog.models import Book; Book.objects.exists()'] }}"
+  changed_when: false
