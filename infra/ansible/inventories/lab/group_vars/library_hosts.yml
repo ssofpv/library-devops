@@ -3,3 +3,5 @@ library_environment: lab
 library_compose_project: library-lab
 library_deploy_dir: /opt/library-lab
 library_http_port: 18001
+library_app_image_tag: "2c4dc791918a62583f103c7cfee2de06aeb9676d"
+library_lab_vault_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.config/library-lab/vault.yml"

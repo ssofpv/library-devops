@@ -1,0 +1,55 @@
+---
+- name: Load application secrets from the controller
+  ansible.builtin.include_vars:
+    file: "{{ library_lab_vault_file }}"
+    name: library_lab_secrets
+  no_log: true
+
+- name: Validate the application image tag
+  ansible.builtin.assert:
+    that: library_app_image_tag is match('^[0-9a-f]{40}$')
+    fail_msg: Set library_app_image_tag to the full SHA of a published image.
+
+- name: Validate the application secrets
+  ansible.builtin.assert:
+    that:
+      - library_lab_secrets.django_secret_key is match('^[A-Za-z0-9_-]{32,}$')
+      - library_lab_secrets.postgres_password is match('^[A-Za-z0-9_-]{32,}$')
+      - library_lab_secrets.django_secret_key != library_lab_secrets.postgres_password
+  no_log: true
+
+- name: Write the Compose definition
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ library_deploy_dir }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Write the protected application environment
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: "{{ library_deploy_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false
+  no_log: true
+
+- name: Start and inspect the Compose application
+  ansible.builtin.include_tasks: compose.yml
+  vars:
+    library_compose:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ library_deploy_dir }}"
+      - --env-file
+      - "{{ library_deploy_dir }}/.env"
+      - --project-name
+      - "{{ library_compose_project }}"
+  when: not ansible_check_mode
+
+- name: Check the application over HTTP from the controller
+  ansible.builtin.include_tasks: verify.yml
+  when: not ansible_check_mode

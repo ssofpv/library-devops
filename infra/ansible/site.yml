@@ -21,3 +21,13 @@
 
   roles:
     - role: bootstrap
+
+  tasks:
+    - name: Apply pending bootstrap handlers before publishing the application port
+      ansible.builtin.meta: flush_handlers
+      when: library_deploy_app | default(false) | bool
+
+    - name: Deploy and verify the application
+      ansible.builtin.include_role:
+        name: lab_application
+      when: library_deploy_app | default(false) | bool
