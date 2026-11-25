@@ -22,6 +22,51 @@
     argv: "{{ library_compose + ['up', '-d', '--wait', '--wait-timeout', '120', 'app'] }}"
   changed_when: false
 
+- name: Validate Prometheus configuration and alert rules
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['run', '--rm', '--no-deps', '-T', '--entrypoint',
+             '/bin/promtool', 'prometheus', 'check', 'config', '/etc/prometheus/prometheus.yml'] }}"
+  changed_when: false
+
+- name: Start monitoring services
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['up', '-d', '--wait', '--wait-timeout', '120',
+             'node-exporter', 'prometheus', 'grafana'] }}"
+  changed_when: false
+
+- name: Reload provisioned monitoring configuration
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['restart', 'prometheus', 'grafana'] }}"
+  when: library_monitoring_files.changed
+  changed_when: true
+
+- name: Wait for Prometheus to collect a successful scrape from both targets
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:9090/api/v1/query?query=sum%28up%7Bjob%3D~%22library%7Clibrary-lab%22%7D%29"
+    status_code: 200
+    use_proxy: false
+    timeout: 5
+  register: library_monitoring_targets
+  retries: 12
+  delay: 5
+  until: >-
+    library_monitoring_targets.status == 200 and
+    library_monitoring_targets.json.data.result | length == 1 and
+    (library_monitoring_targets.json.data.result[0].value[1] | int) == 2
+
+- name: Wait for Grafana to report a healthy database
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+    use_proxy: false
+    timeout: 5
+  register: library_grafana_health
+  retries: 12
+  delay: 5
+  until: >-
+    library_grafana_health.status == 200 and
+    (library_grafana_health.json | default({})).get('database') == 'ok'
+
 - name: Report changes to the running containers
   ansible.builtin.command:
     argv: "{{ library_compose + ['ps', '--status', 'running', '--quiet'] }}"

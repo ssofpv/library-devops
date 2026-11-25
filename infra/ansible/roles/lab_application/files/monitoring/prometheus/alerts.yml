@@ -1,0 +1,10 @@
+groups:
+  - name: library
+    rules:
+      - alert: LibraryUnavailable
+        expr: (up{job="library"} == 0) or (library_app_ready{job="library"} == 0)
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "The library application or its database is unavailable"

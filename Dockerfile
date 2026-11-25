@@ -38,9 +38,9 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
 
 STOPSIGNAL SIGTERM
 
-CMD ["gunicorn", "--no-control-socket", \
+CMD ["/bin/sh", "/app/scripts/start_gunicorn.sh", "gunicorn", "--no-control-socket", \
      "--bind", "0.0.0.0:8000", \
      "--worker-class", "gthread", "--workers", "2", "--threads", "2", \
      "--timeout", "30", "--graceful-timeout", "30", \
-     "--access-logfile", "-", "--error-logfile", "-", \
+     "--error-logfile", "-", \
      "config.wsgi:application"]

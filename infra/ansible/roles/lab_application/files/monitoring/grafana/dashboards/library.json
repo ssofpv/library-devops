@@ -1,0 +1,233 @@
+{
+  "uid": "library-observability",
+  "title": "Библиотека — library-lab",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Доступность приложения и БД",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "library-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"library\"}",
+          "legendFormat": "HTTP /metrics/",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "library_app_ready{job=\"library\"}",
+          "legendFormat": "Чтение из PostgreSQL",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Запросы в секунду",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "library-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(library_http_requests_total{route!=\"/health/\"}[2m]))",
+          "legendFormat": "HTTP",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Ошибки 5xx в секунду",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "library-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(library_http_requests_total{status_class=\"5xx\"}[2m])) or 0 * up{job=\"library\"}",
+          "legendFormat": "HTTP 5xx",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Время ответа p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "library-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(library_http_request_duration_seconds_bucket{route!=\"/health/\"}[2m])))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "CPU, RAM и диск ВМ",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "library-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"library-lab\",mode=\"idle\"}[2m])))",
+          "legendFormat": "CPU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"library-lab\"} / node_memory_MemTotal_bytes{job=\"library-lab\"})",
+          "legendFormat": "RAM",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "100 * (1 - node_filesystem_avail_bytes{job=\"library-lab\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"library-lab\",mountpoint=\"/\"})",
+          "legendFormat": "Диск /",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Доступные экземпляры",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "library-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "library_available_copies{job=\"library\"}",
+          "legendFormat": "Экземпляры",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "library-prometheus"
+          }
+        }
+      ]
+    }
+  ]
+}

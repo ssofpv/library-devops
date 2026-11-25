@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path
 
+from .metrics import metrics
 from .views import health, version
 
 urlpatterns = [
@@ -13,6 +14,7 @@ urlpatterns = [
     path("", include("catalog.web_urls")),
     path("admin/", admin.site.urls),
     path("health/", health, name="health"),
+    path("metrics/", metrics, name="metrics"),
     path("version/", version, name="version"),
     path("api/", include("catalog.urls")),
     path("api/", include("inventory.urls")),

@@ -18,6 +18,16 @@
       - library_lab_secrets.django_secret_key != library_lab_secrets.postgres_password
   no_log: true
 
+- name: Install monitoring configuration and the Grafana dashboard
+  ansible.builtin.copy:
+    src: monitoring/
+    dest: "{{ library_deploy_dir }}/monitoring/"
+    owner: root
+    group: root
+    directory_mode: "0755"
+    mode: "0644"
+  register: library_monitoring_files
+
 - name: Write the Compose definition
   ansible.builtin.template:
     src: compose.yaml.j2
