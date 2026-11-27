@@ -28,6 +28,12 @@
              '/bin/promtool', 'prometheus', 'check', 'config', '/etc/prometheus/prometheus.yml'] }}"
   changed_when: false
 
+- name: Test alert timing and recovery before starting monitoring services
+  ansible.builtin.command:
+    argv: "{{ library_compose + ['run', '--rm', '--no-deps', '-T', '--entrypoint',
+             '/bin/promtool', 'prometheus', 'test', 'rules', '/etc/prometheus/alerts.test.yml'] }}"
+  changed_when: false
+
 - name: Start monitoring services
   ansible.builtin.command:
     argv: "{{ library_compose + ['up', '-d', '--wait', '--wait-timeout', '120',

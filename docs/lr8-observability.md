@@ -9,8 +9,11 @@ Grafana «Библиотека — library-lab» содержит доступн
 запросы, ошибки 5xx, p95 времени ответа, CPU, RAM и диск ВМ, а также количество
 доступных экземпляров. Графики нагрузки и p95 исключают служебный `/health/`.
 При недоступной БД число экземпляров отсутствует, а `library_app_ready` равно нулю.
-Правило `LibraryUnavailable` переходит в Firing, если сбой наблюдается 30 секунд.
-Его состояние смотрят на странице Alerts в Prometheus.
+Правило `LibraryAvailabilityWarning` переходит в Firing при первой оценке,
+зафиксировавшей сбой. `LibraryUnavailable` переходит в Firing после 30 секунд
+непрерывного сбоя. Состояние обоих правил видно на странице Alerts в Prometheus.
+Перед запуском мониторинга Ansible проверяет через `promtool`, что предупреждение
+срабатывает первым и оба оповещения снимаются после восстановления.
 
 ## Доступ
 
@@ -30,13 +33,12 @@ ssh -i "$env:USERPROFILE\.ssh\library_sofia" -o IdentitiesOnly=yes -N -L 13000:1
 
 ## Диагностика и восстановление
 
-На `library-lab` из `/opt/library-lab` проверь состояние сервисов и
+На `library-lab` проверь состояние сервисов и
 последние журналы. Сопоставь время наблюдения на панели с журналами.
 
 ```sh
-cd /opt/library-lab
-sudo docker compose --project-name library-lab ps -a
-sudo docker compose --project-name library-lab logs --since 10m --tail 100 app db
+sudo docker compose --project-directory /opt/library-lab --project-name library-lab ps -a
+sudo docker compose --project-directory /opt/library-lab --project-name library-lab logs --since 10m --tail 100 app db
 ```
 
 Если Prometheus показывает успешный опрос, но `library_app_ready=0` и
@@ -44,7 +46,7 @@ sudo docker compose --project-name library-lab logs --since 10m --tail 100 app d
 Если выяснилось, что остановлен сервис `db`, запусти существующий контейнер:
 
 ```sh
-sudo docker compose --project-name library-lab up -d --wait db
+sudo docker compose --project-directory /opt/library-lab --project-name library-lab up -d --wait db
 ```
 
 Проверь, что с Windows `/health/` снова возвращает 200, текущий `/version/`

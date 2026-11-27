@@ -1,0 +1,129 @@
+rule_files:
+  - alerts.yml
+evaluation_interval: 15s
+tests:
+  - name: PostgreSQL unavailable while the application still exports metrics
+    interval: 15s
+    input_series:
+      - series: 'up{job="library",instance="app:8000"}'
+        values: "1 1 1 1 1"
+      - series: 'library_app_ready{job="library",instance="app:8000"}'
+        values: "1 0 0 0 1"
+    alert_rule_test:
+      - eval_time: 0s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts: []
+      - eval_time: 0s
+        alertname: LibraryUnavailable
+        exp_alerts: []
+      - eval_time: 15s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: warning
+            exp_annotations:
+              summary: "The library application or its database failed a monitoring check"
+      - eval_time: 15s
+        alertname: LibraryUnavailable
+        exp_alerts: []
+      - eval_time: 30s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: warning
+            exp_annotations:
+              summary: "The library application or its database failed a monitoring check"
+      - eval_time: 30s
+        alertname: LibraryUnavailable
+        exp_alerts: []
+      - eval_time: 45s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: warning
+            exp_annotations:
+              summary: "The library application or its database failed a monitoring check"
+      - eval_time: 45s
+        alertname: LibraryUnavailable
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: critical
+            exp_annotations:
+              summary: "The library application or its database is unavailable"
+      - eval_time: 1m
+        alertname: LibraryAvailabilityWarning
+        exp_alerts: []
+      - eval_time: 1m
+        alertname: LibraryUnavailable
+        exp_alerts: []
+
+  - name: Application scrape fails and then recovers
+    interval: 15s
+    input_series:
+      - series: 'up{job="library",instance="app:8000"}'
+        values: "1 0 0 0 1"
+      - series: 'library_app_ready{job="library",instance="app:8000"}'
+        values: "1 stale _ _ 1"
+    alert_rule_test:
+      - eval_time: 0s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts: []
+      - eval_time: 0s
+        alertname: LibraryUnavailable
+        exp_alerts: []
+      - eval_time: 15s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: warning
+            exp_annotations:
+              summary: "The library application or its database failed a monitoring check"
+      - eval_time: 15s
+        alertname: LibraryUnavailable
+        exp_alerts: []
+      - eval_time: 30s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: warning
+            exp_annotations:
+              summary: "The library application or its database failed a monitoring check"
+      - eval_time: 30s
+        alertname: LibraryUnavailable
+        exp_alerts: []
+      - eval_time: 45s
+        alertname: LibraryAvailabilityWarning
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: warning
+            exp_annotations:
+              summary: "The library application or its database failed a monitoring check"
+      - eval_time: 45s
+        alertname: LibraryUnavailable
+        exp_alerts:
+          - exp_labels:
+              job: library
+              instance: app:8000
+              severity: critical
+            exp_annotations:
+              summary: "The library application or its database is unavailable"
+      - eval_time: 1m
+        alertname: LibraryAvailabilityWarning
+        exp_alerts: []
+      - eval_time: 1m
+        alertname: LibraryUnavailable
+        exp_alerts: []
