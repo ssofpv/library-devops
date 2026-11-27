@@ -6,7 +6,7 @@ from django.utils.translation import override
 from django.views.decorators.http import require_http_methods, require_safe
 
 from .models import Author, Book
-from .web_forms import AuthorForm, BookForm
+from .web_forms import AuthorForm, BookForm, BookYearFilterForm
 
 
 @login_required
@@ -31,12 +31,21 @@ def authors(request):
 @login_required
 @require_safe
 def books(request):
+    filter_form = BookYearFilterForm(request.GET)
+    queryset = Book.objects.prefetch_related("authors")
+    valid = filter_form.is_valid()
+    if valid:
+        year = filter_form.cleaned_data["year"]
+        if year is not None:
+            queryset = queryset.filter(publication_year=year)
+    else:
+        queryset = queryset.none()
+
     return render(
         request,
         "library/books.html",
-        {
-            "books": Book.objects.prefetch_related("authors"),
-        },
+        {"books": queryset, "filter_form": filter_form},
+        status=200 if valid else 400,
     )
 
 
