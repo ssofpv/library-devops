@@ -28,3 +28,23 @@ class BookForm(forms.ModelForm):
     class Meta:
         model = Book
         fields = ["title", "description", "publication_year", "authors"]
+
+
+class BookYearFilterForm(forms.Form):
+    year = forms.TypedChoiceField(
+        label="Год издания",
+        required=False,
+        coerce=int,
+        empty_value=None,
+        error_messages={"invalid_choice": "Выберите год из списка."},
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        years = (
+            Book.objects.exclude(publication_year__isnull=True)
+            .order_by("-publication_year")
+            .values_list("publication_year", flat=True)
+            .distinct()
+        )
+        self.fields["year"].choices = [("", "Все годы")] + [(year, str(year)) for year in years]

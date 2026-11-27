@@ -67,6 +67,41 @@ class CatalogWebTests(TestCase):
             with self.subTest(route=route):
                 self.assertContains(self.client.get(reverse(f"library:{route}")), text)
 
+    def test_books_filter_by_publication_year(self):
+        same_year = Book.objects.create(title="Второе издание 1902", publication_year=1902)
+        other_year = Book.objects.create(title="Затерянный мир", publication_year=1912)
+        unknown_year = Book.objects.create(title="Издание без даты")
+
+        response = self.client.get(reverse("library:books"), {"year": 1902})
+
+        self.assertContains(response, self.book.title)
+        self.assertContains(response, same_year.title)
+        self.assertNotContains(response, other_year.title)
+        self.assertNotContains(response, unknown_year.title)
+        self.assertContains(response, '<option value="1902" selected>1902</option>', html=True)
+        self.assertEqual(
+            list(response.context["filter_form"].fields["year"].choices),
+            [("", "Все годы"), (1912, "1912"), (1902, "1902")],
+        )
+
+    def test_books_filter_reset_shows_books_with_and_without_year(self):
+        unknown_year = Book.objects.create(title="Издание без даты")
+        url = reverse("library:books")
+        filtered = self.client.get(url, {"year": 1902})
+        self.assertContains(filtered, f'<a href="{url}">Сбросить</a>', html=True)
+        for query in ({}, {"year": ""}):
+            with self.subTest(query=query):
+                response = self.client.get(url, query)
+                self.assertContains(response, self.book.title)
+                self.assertContains(response, unknown_year.title)
+
+    def test_invalid_book_filter_year_shows_error(self):
+        for year in ("abc", 1912):
+            with self.subTest(year=year):
+                response = self.client.get(reverse("library:books"), {"year": year})
+                self.assertContains(response, "Выберите год из списка.", status_code=400)
+                self.assertNotContains(response, self.book.title, status_code=400)
+
     def test_empty_lists(self):
         self.book.delete()
         self.author.delete()
