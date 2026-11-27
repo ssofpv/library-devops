@@ -1,6 +1,12 @@
 groups:
   - name: library
     rules:
+      - alert: LibraryAvailabilityWarning
+        expr: (up{job="library"} == 0) or (library_app_ready{job="library"} == 0)
+        labels:
+          severity: warning
+        annotations:
+          summary: "The library application or its database failed a monitoring check"
       - alert: LibraryUnavailable
         expr: (up{job="library"} == 0) or (library_app_ready{job="library"} == 0)
         for: 30s
